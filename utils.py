@@ -164,7 +164,7 @@ def deploy_contract_with_prepayment(ctx: SethTestContext, source: str, name: str
                                      libs: dict = None) -> SethContract:
     """Deploy a contract and add prepayment for subsequent calls."""
     contract = deploy_contract(ctx, source, name, args=args, amount=amount, libs=libs)
-    contract.prepayment(prepayment, ctx.ecdsa_key)
+    contract.prefund(prepayment, ctx.ecdsa_key)
     time.sleep(CONSENSUS_SETTLE_DELAY)
     return contract
 

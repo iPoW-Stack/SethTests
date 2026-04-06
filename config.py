@@ -2,7 +2,7 @@
 import os
 
 # --- Network Configuration ---
-SETH_HOST = os.environ.get("SETH_HOST", "35.184.150.163")
+SETH_HOST = os.environ.get("SETH_HOST", "35.197.170.240")
 SETH_PORT = int(os.environ.get("SETH_PORT", "23001"))
 
 # --- Test Account (ECDSA) ---

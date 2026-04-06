@@ -115,7 +115,13 @@ def assert_tx_fail(receipt: dict, test_name: str):
     else:
         results.record_fail(test_name, "Expected failure but got success")
 
+def _unwrap(v):
+    if isinstance(v, tuple) and len(v) == 1:
+        return v[0]
+    return v
+
 def assert_equal(actual, expected, test_name: str):
+    actual = _unwrap(actual)
     """Assert equality."""
     if actual == expected:
         results.record_pass(test_name)

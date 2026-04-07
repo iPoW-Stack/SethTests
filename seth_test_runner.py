@@ -10,7 +10,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="Seth EVM Compatibility Test Suite")
     p.add_argument("--host", default=None, help="Seth node host")
     p.add_argument("--port", type=int, default=None, help="Seth node port")
-    p.add_argument("--phase", type=int, choices=[1, 2, 3], help="Run specific phase")
+    p.add_argument("--phase", type=int, choices=[1, 2, 3, 4], help="Run specific phase")
     p.add_argument("--module", choices=["core","contracts","transactions","prefund","oqs"])
     p.add_argument("--skip-oqs", action="store_true")
     p.add_argument("--list", action="store_true")

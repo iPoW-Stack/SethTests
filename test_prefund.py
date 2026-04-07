@@ -135,6 +135,7 @@ def test_prefund_gas_consumption(ctx: SethTestContext):
     """Test that contract call consumes gas from prefund."""
     contract = deploy_contract(ctx, VAULT_SOL, "Vault")
     addr = contract.address
+    initial_pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
     # Deposit prefund
     deposit_amount = 10000000
@@ -146,7 +147,7 @@ def test_prefund_gas_consumption(ctx: SethTestContext):
     while count < 30:
         time.sleep(2)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp >= deposit_amount:
+        if pp >= initial_pp + deposit_amount:
             break
 
         count += 1

@@ -64,6 +64,7 @@ def main():
     elif args.phase == 3:
         test_prefund.run_all(ctx)
         if not args.skip_oqs: test_oqs.run_all(ctx)
+    elif args.phase == 4: test_prefund.run_all(ctx)
     else:
         test_core_evm.run_all(ctx); test_contracts.run_all(ctx)
         test_transactions.run_all(ctx); test_prefund.run_all(ctx)

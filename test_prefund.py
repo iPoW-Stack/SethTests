@@ -217,6 +217,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     """Test prefund with computationally heavy contract."""
     contract = deploy_contract(ctx, HEAVY_WORK_SOL, "HeavyWork")
     addr = contract.address
+    initial_pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
     # Deposit sufficient prefund
     contract.prefund(20000000, ctx.ecdsa_key)
@@ -224,7 +225,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     while count < 30:
         time.sleep(2)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp >= 20000000:
+        if pp >= + initial_pp + 20000000:
             break
 
         count += 1
@@ -246,7 +247,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     while count < 30:
         time.sleep(2)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp < 20000000:
+        if pp < pp_before:
             break
 
         count += 1

@@ -117,7 +117,7 @@ def test_prefund_multiple_deposits(ctx: SethTestContext):
     assert_tx_success(receipt2, "prefund_multi_deposit_2")
 
     count = 0
-    while count < 10:
+    while count < 30:
         time.sleep(2)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + 5000000:
@@ -142,12 +142,30 @@ def test_prefund_gas_consumption(ctx: SethTestContext):
     assert_tx_success(receipt, "prefund_consume_deposit")
     time.sleep(CONSENSUS_SETTLE_DELAY)
 
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp >= deposit_amount:
+            break
+
+        count += 1
+
     pp_before_call = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
     # Execute contract call (should consume gas from prefund)
     call_receipt = contract.functions.set(42).transact(ctx.ecdsa_key, prefund=0)
     assert_tx_success(call_receipt, "prefund_consume_call")
-    time.sleep(CONSENSUS_SETTLE_DELAY)
+
+
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp < deposit_amount:
+            break
+
+        count += 1
 
     pp_after_call = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
@@ -164,15 +182,29 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
 
     # Initial deposit
     contract.prefund(5000000, ctx.ecdsa_key)
-    time.sleep(CONSENSUS_SETTLE_DELAY)
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp >= 5000000:
+            break
+
+        count += 1
+
     pp_before = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
     # Call with additional prefund
     extra_prepay = 1000000
     call_receipt = contract.functions.set(99).transact(ctx.ecdsa_key, prefund=extra_prepay)
     assert_tx_success(call_receipt, "prefund_call_with_deposit_tx")
-    time.sleep(CONSENSUS_SETTLE_DELAY)
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp < pp_before:
+            break
 
+        count += 1
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     # Should be: pp_before + extra_prepay - gas_used
     # At minimum, pp_after should be >= pp_before (since extra_prepay should cover gas)
@@ -187,6 +219,15 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
 
     # Deposit sufficient prefund
     contract.prefund(20000000, ctx.ecdsa_key)
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp >= 20000000:
+            break
+
+        count += 1
+
     assert_tx_success(
         ctx.client.wait_for_receipt(
             ctx.client.send_transaction_auto(
@@ -194,14 +235,20 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
             )
         ), "prefund_heavy_deposit"
     )
-    time.sleep(CONSENSUS_SETTLE_DELAY)
 
     pp_before = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
     # Heavy computation
     receipt = contract.functions.compute(100).transact(ctx.ecdsa_key, prefund=0)
     assert_tx_success(receipt, "prefund_heavy_compute")
-    time.sleep(CONSENSUS_SETTLE_DELAY)
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp < 20000000:
+            break
+
+        count += 1
 
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     consumed = pp_before - pp_after

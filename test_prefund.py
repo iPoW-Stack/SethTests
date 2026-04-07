@@ -251,9 +251,8 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
         count += 1
 
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-    consumed = pp_before - pp_after
-    assert_true(consumed > 0, "prefund_heavy_gas_consumed",
-                f"Gas consumed: {consumed}")
+    assert_true(pp_after < pp_before, "prefund_heavy_gas_consumed",
+                f"Gas consumed: {pp_before - pp_after}")
 
 
 # ==============================================================================

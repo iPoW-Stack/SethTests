@@ -145,7 +145,7 @@ def test_contract_creation_via_tx(ctx: SethTestContext):
 def test_chain_id(ctx: SethTestContext):
     """Test that the EVM returns the correct chain ID (ref: stChainId)."""
     contract = deploy_contract_with_prefund(ctx, CHAIN_ID_SOL, "ChainIdChecker")
-    chain_id = contract.functions.getChainId().call()
+    chain_id = contract.functions.getChainId().call()[0]
     print(f"Chain ID: {chain_id}")
     assert_true(chain_id >= 0, "chain_id_non_negative", f"Got chain_id={chain_id}")
 
@@ -175,7 +175,7 @@ def test_contract_call_with_value(ctx: SethTestContext):
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=1000000)
     assert_tx_success(receipt, "call_with_value_tx")
-    total = contract.functions.totalReceived().call()
+    total = contract.functions.totalReceived().call()[0]
     print(f"Total received: {total}")
     assert_true(total > 0, "call_with_value_total_received", f"Total: {total}")
 

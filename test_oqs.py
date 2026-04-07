@@ -3,7 +3,7 @@ from __future__ import annotations
 import time, requests
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
-    assert_true, assert_greater_than, deploy_contract_with_prepayment,
+    assert_true, assert_greater_than, deploy_contract_with_prefund,
     print_section, results, CONSENSUS_SETTLE_DELAY
 )
 from config import TEST_OQS_KEY, TEST_OQS_PK
@@ -71,8 +71,8 @@ def test_oqs_counter(ctx):
         time.sleep(1)
     assert_equal(contract.functions.getCount().call(), 3, "oqs_counter_final")
 
-def test_oqs_prepayment(ctx):
-    """Test OQS prepayment deposit and consumption."""
+def test_oqs_prefund(ctx):
+    """Test OQS prefund deposit and consumption."""
     if not oqs_available(): results.record_skip("oqs_pp", "OQS not configured"); return
     addr, key, pk = get_oqs_context(ctx)
     bin_code, abi = compile_and_link(OQS_VAULT_SOL, "OqsVault")
@@ -80,7 +80,7 @@ def test_oqs_prepayment(ctx):
     contract.deploy({"from": addr, "salt": ctx.next_salt(), "pubkey": pk}, key)
     caddr = contract.address
     init_pp = get_pp_balance(ctx, caddr, addr)
-    contract.prepayment(5000000, key, oqs_pubkey=pk)
+    contract.prefund(5000000, key, oqs_pubkey=pk)
     time.sleep(CONSENSUS_SETTLE_DELAY)
     assert_equal(get_pp_balance(ctx, caddr, addr), init_pp + 5000000, "oqs_pp_deposit")
 
@@ -89,4 +89,4 @@ def run_all(ctx):
     run_test(test_oqs_transfer, ctx)
     run_test(test_oqs_contract_deploy, ctx)
     run_test(test_oqs_counter, ctx)
-    run_test(test_oqs_prepayment, ctx)
+    run_test(test_oqs_prefund, ctx)

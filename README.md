@@ -1,6 +1,6 @@
 # Seth EVM Compatibility Test Suite
 
-A comprehensive test suite for validating EVM compatibility on the Seth blockchain, covering core EVM operations, contract interactions, transaction types, gas prepayment, and post-quantum (OQS) signatures.
+A comprehensive test suite for validating EVM compatibility on the Seth blockchain, covering core EVM operations, contract interactions, transaction types, gas prefund, and post-quantum (OQS) signatures.
 
 ## Prerequisites
 
@@ -90,17 +90,17 @@ Validates standard Ethereum transaction types against Seth.
 | `test_gas_consumption` | Gas consumption during execution |
 | `test_chain_id` | Chain ID returned by the EVM |
 
-### Phase 3A: Gas Prepayment (`--module prepayment`)
+### Phase 3A: Gas Prefund (`--module prefund`)
 
-Tests Seth's prepayment mechanism for gasless transactions.
+Tests Seth's prefund mechanism for gasless transactions.
 
 | Test | Description |
 |---|---|
-| `test_prepayment_basic_deposit` | Basic prepayment deposit |
-| `test_prepayment_multiple_deposits` | Multiple deposits accumulate correctly |
-| `test_prepayment_gas_consumption` | Gas consumed from prepayment balance |
-| `test_prepayment_with_call_deposit` | Prepayment included with contract call |
-| `test_prepayment_heavy_gas_usage` | Prepayment under heavy computation |
+| `test_prefund_basic_deposit` | Basic prefund deposit |
+| `test_prefund_multiple_deposits` | Multiple deposits accumulate correctly |
+| `test_prefund_gas_consumption` | Gas consumed from prefund balance |
+| `test_prefund_with_call_deposit` | Prefund included with contract call |
+| `test_prefund_heavy_gas_usage` | Prefund under heavy computation |
 
 ### Phase 3B: Post-Quantum (OQS) Signatures (`--module oqs`)
 
@@ -111,7 +111,7 @@ Tests ML-DSA-44 post-quantum signature support (Seth-specific feature).
 | `test_oqs_transfer` | OQS-signed transfer |
 | `test_oqs_contract_deploy` | Deploy contract with OQS account |
 | `test_oqs_counter` | Multiple OQS-signed contract calls |
-| `test_oqs_prepayment` | OQS prepayment deposit and consumption |
+| `test_oqs_prefund` | OQS prefund deposit and consumption |
 
 > **Note:** OQS tests require `SETH_TEST_OQS_KEY` and `SETH_TEST_OQS_PK` to be set. They will be automatically skipped if not configured.
 
@@ -121,13 +121,13 @@ Tests ML-DSA-44 post-quantum signature support (Seth-specific feature).
 # Run a specific phase
 python seth_tests/seth_test_runner.py --phase 1     # Core EVM + Contracts
 python seth_tests/seth_test_runner.py --phase 2     # Transactions
-python seth_tests/seth_test_runner.py --phase 3     # Prepayment + OQS
+python seth_tests/seth_test_runner.py --phase 3     # Prefund + OQS
 
 # Run a single module
 python seth_tests/seth_test_runner.py --module core
 python seth_tests/seth_test_runner.py --module contracts
 python seth_tests/seth_test_runner.py --module transactions
-python seth_tests/seth_test_runner.py --module prepayment
+python seth_tests/seth_test_runner.py --module prefund
 python seth_tests/seth_test_runner.py --module oqs
 
 # Skip OQS tests (if no OQS keys available)
@@ -149,7 +149,7 @@ seth_tests/
 ├── test_core_evm.py        # Phase 1A: Core EVM opcode tests
 ├── test_contracts.py       # Phase 1B: Contract deployment & interaction
 ├── test_transactions.py    # Phase 2: Transaction type tests
-├── test_prepayment.py      # Phase 3A: Gas prepayment tests
+├── test_prefund.py      # Phase 3A: Gas prefund tests
 └── test_oqs.py             # Phase 3B: Post-quantum signature tests
 ```
 

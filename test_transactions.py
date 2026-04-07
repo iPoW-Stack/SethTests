@@ -6,7 +6,7 @@ import time
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
     assert_not_equal, assert_greater_than, assert_true,
-    deploy_contract, deploy_contract_with_prepayment, print_section, results
+    deploy_contract, deploy_contract_with_prefund, print_section, results
 )
 from seth_sdk import StepType
 
@@ -101,8 +101,16 @@ def test_simple_transfer(ctx: SethTestContext):
     receipt = ctx.w3.seth.send_transaction(
         {'to': dest, 'value': 1000000}, ctx.ecdsa_key
     )
-    balance_after = ctx.get_balance(dest)
-    assert_greater_than(balance_after, balance_before, "transfer_balance_increased")
+
+    count = 0
+    while count < 30:
+        time.sleep(2)
+        balance_after = ctx.get_balance(dest)
+        if balance_after > balance_before:
+            break
+
+        count += 1
+    assert_equal(balance_after, balance_before + 1000000, "transfer_balance_increased")
 
 
 def test_transfer_zero_value(ctx: SethTestContext):
@@ -113,13 +121,18 @@ def test_transfer_zero_value(ctx: SethTestContext):
         {'to': dest, 'value': 0}, ctx.ecdsa_key
     )
     assert_tx_success(receipt, "transfer_zero_value_success")
+    count = 0
+    while count < 10:
+        time.sleep(2)
+        count += 1
+
     balance_after = ctx.get_balance(dest)
     assert_equal(balance_after, balance_before, "transfer_zero_value_no_change")
 
 
 def test_contract_creation_via_tx(ctx: SethTestContext):
     """Test creating a contract through a transaction (ref: stCreateTest)."""
-    contract = deploy_contract_with_prepayment(
+    contract = deploy_contract_with_prefund(
         ctx, SIMPLE_STORE_SOL, "SimpleStore", args=[42]
     )
     val = contract.functions.value().call()
@@ -131,14 +144,15 @@ def test_contract_creation_via_tx(ctx: SethTestContext):
 
 def test_chain_id(ctx: SethTestContext):
     """Test that the EVM returns the correct chain ID (ref: stChainId)."""
-    contract = deploy_contract_with_prepayment(ctx, CHAIN_ID_SOL, "ChainIdChecker")
+    contract = deploy_contract_with_prefund(ctx, CHAIN_ID_SOL, "ChainIdChecker")
     chain_id = contract.functions.getChainId().call()
+    print(f"Chain ID: {chain_id}")
     assert_true(chain_id >= 0, "chain_id_non_negative", f"Got chain_id={chain_id}")
 
 
 def test_value_transfer_to_contract(ctx: SethTestContext):
     """Test sending value to a contract with receive() function."""
-    contract = deploy_contract_with_prepayment(ctx, RECEIVER_SOL, "ValueReceiver")
+    contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=500000)
     assert_tx_success(receipt, "value_transfer_deposit_tx")
     events = receipt.get('decoded_events', [])
@@ -158,16 +172,17 @@ def test_multiple_transfers_sequential(ctx: SethTestContext):
 
 def test_contract_call_with_value(ctx: SethTestContext):
     """Test contract call that includes value transfer."""
-    contract = deploy_contract_with_prepayment(ctx, RECEIVER_SOL, "ValueReceiver")
+    contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=1000000)
     assert_tx_success(receipt, "call_with_value_tx")
     total = contract.functions.totalReceived().call()
+    print(f"Total received: {total}")
     assert_true(total > 0, "call_with_value_total_received", f"Total: {total}")
 
 
 def test_gas_consumption(ctx: SethTestContext):
     """Test that gas is consumed during contract execution."""
-    contract = deploy_contract_with_prepayment(ctx, GAS_TRACKER_SOL, "GasTracker")
+    contract = deploy_contract_with_prefund(ctx, GAS_TRACKER_SOL, "GasTracker")
     receipt = contract.functions.doWork(10).transact(ctx.ecdsa_key)
     assert_tx_success(receipt, "gas_consumption_work_tx")
     ops = contract.functions.totalOps().call()

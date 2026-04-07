@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
-    assert_true, deploy_contract, deploy_contract_with_prepayment,
+    assert_true, deploy_contract, deploy_contract_with_prefund,
     print_section, results
 )
 from seth_sdk import StepType, compile_and_link
@@ -77,12 +77,12 @@ contract RevertTest {
 
 def test_contract_deploy_constructor(ctx):
     """Test contract deployment with constructor args."""
-    contract = deploy_contract_with_prepayment(ctx, COUNTER_SOL, "Counter", args=[42])
+    contract = deploy_contract_with_prefund(ctx, COUNTER_SOL, "Counter", args=[42])
     assert_equal(contract.functions.count().call(), 42, "deploy_constructor")
 
 def test_contract_increment_decrement(ctx):
     """Test state mutation via increment/decrement."""
-    contract = deploy_contract_with_prepayment(ctx, COUNTER_SOL, "Counter", args=[10])
+    contract = deploy_contract_with_prefund(ctx, COUNTER_SOL, "Counter", args=[10])
     contract.functions.increment().transact(ctx.ecdsa_key)
     assert_equal(contract.functions.count().call(), 11, "after_increment")
     contract.functions.decrement().transact(ctx.ecdsa_key)
@@ -90,23 +90,23 @@ def test_contract_increment_decrement(ctx):
 
 def test_contract_reset(ctx):
     """Test reset function."""
-    contract = deploy_contract_with_prepayment(ctx, COUNTER_SOL, "Counter", args=[100])
+    contract = deploy_contract_with_prefund(ctx, COUNTER_SOL, "Counter", args=[100])
     contract.functions.reset().transact(ctx.ecdsa_key)
     assert_equal(contract.functions.count().call(), 0, "after_reset")
 
 def test_cross_contract_call(ctx):
     """Test cross-contract CALL operation."""
     from eth_utils import to_checksum_address
-    callee = deploy_contract_with_prepayment(ctx, CALLEE_SOL, "Callee")
-    caller = deploy_contract_with_prepayment(ctx, CALLER_SOL, "Caller")
+    callee = deploy_contract_with_prefund(ctx, CALLEE_SOL, "Callee")
+    caller = deploy_contract_with_prefund(ctx, CALLER_SOL, "Caller")
     caller.functions.callSetValue(to_checksum_address(callee.address), 12345).transact(ctx.ecdsa_key)
     assert_equal(callee.functions.getValue().call(), 12345, "cross_call_value")
 
 def test_delegatecall(ctx):
     """Test DELEGATECALL for proxy pattern."""
     from eth_utils import to_checksum_address
-    impl = deploy_contract_with_prepayment(ctx, PROXY_SOL, "Implementation")
-    proxy = deploy_contract_with_prepayment(ctx, PROXY_SOL, "Proxy", args=[to_checksum_address(impl.address)])
+    impl = deploy_contract_with_prefund(ctx, PROXY_SOL, "Implementation")
+    proxy = deploy_contract_with_prefund(ctx, PROXY_SOL, "Proxy", args=[to_checksum_address(impl.address)])
     receipt = proxy.functions.delegateSetNum(42).transact(ctx.ecdsa_key)
     assert_tx_success(receipt, "delegatecall_set")
     receipt = proxy.functions.delegateIncrement().transact(ctx.ecdsa_key)
@@ -114,7 +114,7 @@ def test_delegatecall(ctx):
 
 def test_revert_handling(ctx):
     """Test contract revert behavior."""
-    contract = deploy_contract_with_prepayment(ctx, REVERT_SOL, "RevertTest")
+    contract = deploy_contract_with_prefund(ctx, REVERT_SOL, "RevertTest")
     receipt = contract.functions.shouldRevert().transact(ctx.ecdsa_key)
     assert_true(receipt.get("status") != 0, "revert_expected_fail")
     receipt = contract.functions.setValueIfPositive(10).transact(ctx.ecdsa_key)

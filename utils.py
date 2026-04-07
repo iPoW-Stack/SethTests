@@ -16,7 +16,7 @@ from seth_sdk import (
 from config import (
     SETH_HOST, SETH_PORT, TEST_ECDSA_KEY,
     TX_RECEIPT_POLL_INTERVAL, TX_RECEIPT_MAX_WAIT,
-    CONSENSUS_SETTLE_DELAY, RANDOM_SALT, DEFAULT_PREPAYMENT
+    CONSENSUS_SETTLE_DELAY, RANDOM_SALT, DEFAULT_PREFUND
 )
 
 # ==============================================================================
@@ -164,13 +164,13 @@ def deploy_contract(ctx: SethTestContext, source: str, name: str,
     }, ctx.ecdsa_key)
     return contract
 
-def deploy_contract_with_prepayment(ctx: SethTestContext, source: str, name: str,
+def deploy_contract_with_prefund(ctx: SethTestContext, source: str, name: str,
                                      args: list = None, amount: int = 0,
-                                     prepayment: int = DEFAULT_PREPAYMENT,
+                                     prefund: int = DEFAULT_PREFUND,
                                      libs: dict = None) -> SethContract:
-    """Deploy a contract and add prepayment for subsequent calls."""
+    """Deploy a contract and add prefund for subsequent calls."""
     contract = deploy_contract(ctx, source, name, args=args, amount=amount, libs=libs)
-    contract.prefund(prepayment, ctx.ecdsa_key)
+    contract.prefund(prefund, ctx.ecdsa_key)
     time.sleep(CONSENSUS_SETTLE_DELAY)
     return contract
 

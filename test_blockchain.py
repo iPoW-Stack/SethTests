@@ -130,6 +130,8 @@ def test_value_transfer_and_state_survive_across_blocks(ctx: SethTestContext):
     """Reference: bcValidBlockTest value+state execution; payable tx should persist balance and state across confirmations."""
     contract = deploy_contract_with_prefund(ctx, BLOCKCHAIN_COUNTER_SOL, "ChainCounter", args=[1])
     before_total = contract.functions.totalReceived().call()
+    if isinstance(before_total, tuple):
+        before_total = before_total[0]
 
     r1 = contract.functions.payableBump(4).transact(ctx.ecdsa_key, value=700000)
     assert_tx_success(r1, "bc_value_tx1_success")

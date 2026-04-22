@@ -177,6 +177,8 @@ def test_selfbalance(ctx):
     """Test SELFBALANCE opcode."""
     contract = deploy_contract_with_prefund(ctx, SELFBALANCE_TEST_SOL, "SelfBalanceTest", amount=1000000)
     result = contract.functions.getSelfBalance().call()
+    if isinstance(result, tuple):
+        result = result[0]
     assert_true(result >= 0, "selfbalance", f"Balance={result}")
 
 

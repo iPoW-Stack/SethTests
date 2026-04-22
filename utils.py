@@ -122,6 +122,7 @@ def _unwrap(v):
 
 def assert_equal(actual, expected, test_name: str):
     actual = _unwrap(actual)
+    expected = _unwrap(expected)
     """Assert equality."""
     if actual == expected:
         results.record_pass(test_name)

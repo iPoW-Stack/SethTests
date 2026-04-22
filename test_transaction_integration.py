@@ -152,6 +152,8 @@ def test_value_plus_calldata_updates_balance_and_state(ctx: SethTestContext):
     contract = deploy_contract_with_prefund(ctx, TX_INTEGRATION_SOL, "TxIntegrationTarget", args=[1])
 
     total_before = contract.functions.totalReceived().call()
+    if isinstance(total_before, tuple):
+        total_before = total_before[0]
     receipt = contract.functions.payableSetCounter(99).transact(ctx.ecdsa_key, value=500000)
     assert_tx_success(receipt, "txint_payable_call_success")
     _settle()

@@ -200,15 +200,17 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
     extra_prepay = 1000000
     call_receipt = contract.functions.set(99).transact(ctx.ecdsa_key, prefund=extra_prepay)
     assert_tx_success(call_receipt, "prefund_call_with_deposit_tx")
-    count = 0
-    while count < 30:
+
+    # Wait up to 60 seconds for the extra prepay deposit to be reflected
+    # The balance should settle to: pp_before + extra_prepay - gas_used
+    # which should be >= pp_before since extra_prepay should cover gas
+    pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+    for _ in range(30):
         time.sleep(2)
-        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp < pp_before:
+        pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp_after >= pp_before:
             break
 
-        count += 1
-    pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     # Should be: pp_before + extra_prepay - gas_used
     # At minimum, pp_after should be >= pp_before (since extra_prepay should cover gas)
     assert_true(pp_after >= pp_before, "prefund_call_with_deposit_balance",

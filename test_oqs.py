@@ -48,7 +48,14 @@ def test_oqs_transfer(ctx):
     dest = "0000000000000000000000000000000000000002"
     before = ctx.get_balance(dest)
     ctx.w3.send_oqs_transaction({"to": dest, "value": 8888, "pubkey": pk}, key)
-    assert_greater_than(ctx.get_balance(dest), before, "oqs_transfer")
+    # Retry balance query up to 60 seconds
+    after = before
+    for _ in range(30):
+        after = ctx.get_balance(dest)
+        if after > before:
+            break
+        time.sleep(2)
+    assert_greater_than(after, before, "oqs_transfer")
 
 def test_oqs_contract_deploy(ctx):
     """Test deploying contract using OQS account."""

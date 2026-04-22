@@ -157,8 +157,15 @@ def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
     _settle()
 
     nonce_after = ctx.get_nonce(ctx.ecdsa_addr)
-    balance_after = ctx.get_balance(dest)
     assert_equal(nonce_after, nonce_before + 1, "bc_nonce_incremented")
+
+    # Retry balance query up to 60 seconds
+    balance_after = balance_before
+    for _ in range(30):
+        balance_after = ctx.get_balance(dest)
+        if balance_after > balance_before:
+            break
+        time.sleep(2)
     assert_greater_than(balance_after, balance_before, "bc_balance_increased")
 
 

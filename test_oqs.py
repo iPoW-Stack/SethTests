@@ -1,6 +1,7 @@
 # Post-Quantum (OQS) Signature Tests
 from __future__ import annotations
-import time, requests
+import time, requests, urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
     assert_true, assert_greater_than, deploy_contract_with_prefund,
@@ -35,7 +36,7 @@ def get_oqs_context(ctx):
 
 def get_pp_balance(ctx, caddr, uaddr):
     try:
-        r = requests.post(ctx.client.query_url, data={"address": caddr + uaddr}).json()
+        r = requests.post(ctx.client.query_url, data={"address": caddr + uaddr}, verify=False).json()
         return int(r.get("balance", 0))
     except Exception:
         return 0

@@ -4,6 +4,8 @@
 from __future__ import annotations
 import time
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
     assert_true, deploy_contract, deploy_contract_with_prefund,
@@ -64,7 +66,7 @@ def get_prefund_balance(ctx: SethTestContext, contract_addr: str, user_addr: str
     """Query prefund balance for a user on a contract."""
     prepay_addr = contract_addr + user_addr
     try:
-        resp = requests.post(ctx.client.query_url, data={"address": prepay_addr}).json()
+        resp = requests.post(ctx.client.query_url, data={"address": prepay_addr}, verify=False).json()
         return int(resp.get("balance", 0))
     except Exception as e:
         print(f"  [WARN] Prefund query failed: {e}")

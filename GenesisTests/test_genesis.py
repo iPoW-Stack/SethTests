@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "clipy"))
 passed = 0
 failed = 0
 
-DEPLOYER_PK = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
+DEPLOYER_PK = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
 
 def assert_eq(name, got, expected):

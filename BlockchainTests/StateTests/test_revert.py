@@ -69,7 +69,7 @@ def calc_create2(deployer, salt_hex, bytecode_hex):
 def main():
     host = os.getenv("SETH_HOST", "35.197.170.240")
     port = int(os.getenv("SETH_PORT", "23001"))
-    pk = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
+    pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
     from seth_sdk import SethClient, StepType
     cli = SethClient(host, port)

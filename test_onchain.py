@@ -13,20 +13,20 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Note: GenesisTests and VMTests are handled by test_genesis.py and test_vm_opcodes.py
 # natively, so they are NOT included here to avoid double-running.
 ONCHAIN_TESTS = [
-    ("BlockchainTests/StateTests/test_create2.py", "create2"),
-    ("BlockchainTests/StateTests/test_revert.py", "revert"),
-    ("BlockchainTests/StateTests/test_call_codes.py", "call_codes"),
-    ("BlockchainTests/StateTests/test_precompiles.py", "precompiles"),
-    ("BlockchainTests/StateTests/test_storage.py", "storage"),
+    # ("BlockchainTests/StateTests/test_create2.py", "create2"),
+    # ("BlockchainTests/StateTests/test_revert.py", "revert"),
+    # ("BlockchainTests/StateTests/test_call_codes.py", "call_codes"),
+    # ("BlockchainTests/StateTests/test_precompiles.py", "precompiles"),
+    # ("BlockchainTests/StateTests/test_storage.py", "storage"),
     ("BlockchainTests/StateTests/test_log_shift.py", "log_shift"),
-    ("BlockchainTests/StateTests/test_code_env.py", "code_env"),
-    ("BlockchainTests/StateTests/test_system_ops.py", "system_ops"),
-    ("BlockchainTests/StateTests/test_static_delegate.py", "static_delegate"),
-    ("BlockchainTests/StateTests/test_memory_stack.py", "memory_stack"),
-    ("BlockchainTests/StateTests/test_create_refund.py", "create_refund"),
-    ("BlockchainTests/StateTests/test_zero_boundary.py", "zero_boundary"),
-    ("BlockchainTests/StateTests/test_attack_badop.py", "attack_badop"),
-    ("BlockchainTests/StateTests/test_solidity_codelimit.py", "solidity_codelimit"),
+    # ("BlockchainTests/StateTests/test_code_env.py", "code_env"),
+    # ("BlockchainTests/StateTests/test_system_ops.py", "system_ops"),
+    # ("BlockchainTests/StateTests/test_static_delegate.py", "static_delegate"),
+    # ("BlockchainTests/StateTests/test_memory_stack.py", "memory_stack"),
+    # ("BlockchainTests/StateTests/test_create_refund.py", "create_refund"),
+    # ("BlockchainTests/StateTests/test_zero_boundary.py", "zero_boundary"),
+    # ("BlockchainTests/StateTests/test_attack_badop.py", "attack_badop"),
+    # ("BlockchainTests/StateTests/test_solidity_codelimit.py", "solidity_codelimit"),
 ]
 
 

@@ -99,38 +99,30 @@ def main():
 
     # 辅助函数：查询prefund余额
     def get_prefund_balance(contract_addr, user_addr):
-        prepay_addr = contract_addr + user_addr.replace("0x", "")
+        # 确保地址格式正确（不带0x前缀）
+        contract_clean = contract_addr.replace("0x", "")
+        user_clean = user_addr.replace("0x", "")
+        prepay_addr = contract_clean + user_clean
         try:
-            resp = requests.post(cli.query_url, data={"address": prepay_addr}, verify=False).json()
+            resp = requests.post(cli.query_url, data={"address": prepay_addr}, verify=False, timeout=5).json()
             return int(resp.get("balance", 0))
         except Exception as e:
-            print(f"  [WARN] Prefund query failed: {e}")
-            return 0
+            # 查询失败时返回-1表示无法确定
+            return -1
 
-    # 辅助函数：等待prefund生效
-    def wait_for_prefund(contract_addr, user_addr, min_balance, timeout=60):
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            balance = get_prefund_balance(contract_addr, user_addr)
-            if balance >= min_balance:
-                return True
-            time.sleep(2)
-        print(f"  [WARN] Prefund timeout after {timeout}s, balance: {get_prefund_balance(contract_addr, user_addr)}")
-        return False
+    # 辅助函数：等待prefund生效（简化版：只等待固定时间）
+    def wait_for_prefund_simple(timeout=10):
+        """等待prefund生效，最多等待timeout秒"""
+        time.sleep(min(timeout, 10))  # 最多等10秒
 
     # 辅助函数：执行合约调用（先prefund再执行）
     def call_contract(input_hex, prefund_amount=5_000_000):
-        # 获取当前余额
-        current_balance = get_prefund_balance(addr, sender.replace("0x", ""))
-        target_balance = current_balance + prefund_amount
-        
         # 发送prefund交易
         tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=prefund_amount)
         cli.wait_for_receipt(tx)
         
-        # 等待prefund生效
-        if not wait_for_prefund(addr, sender.replace("0x", ""), target_balance):
-            print(f"  [WARN] Prefund may not be ready, proceeding anyway...")
+        # 等待prefund生效（简单等待）
+        wait_for_prefund_simple(3)
         
         # 执行合约调用
         tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=input_hex)

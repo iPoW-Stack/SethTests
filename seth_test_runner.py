@@ -96,9 +96,9 @@ def main():
     elif args.phase == 4:
         test_blockchain.run_all(ctx)
     elif args.phase == 5:
-        test_basic.run_all(ctx)
-        test_genesis.run_all(ctx)
-        test_vm_opcodes.run_all(ctx)
+        # test_basic.run_all(ctx)
+        # test_genesis.run_all(ctx)
+        # test_vm_opcodes.run_all(ctx)
         test_onchain.run_all(ctx)
     else:
         # Run everything

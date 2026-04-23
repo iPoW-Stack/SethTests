@@ -121,14 +121,14 @@ def main():
     # Compile
     print("\n[Compile]")
     try:
-        install_solc("0.8.30")
+        install_solc("0.8.20")
     except Exception as e:
         print(f"  Warning: Could not download solc (network issue?): {e}")
         print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.30")
+    solcx.set_solc_version("0.8.20")
     comp = compile_source(CREATE2_FACTORY_SOL, output_values=["abi", "bin"],
-                           solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="shanghai")
+                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     factory_contract = next(v for k, v in comp.items() if "Create2Factory" in k)
     factory_bin = factory_contract["bin"].replace("0x", "").strip()
 

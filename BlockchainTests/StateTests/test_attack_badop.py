@@ -103,16 +103,16 @@ def main():
 
     print("\n[Compile & Deploy]")
     try:
-        install_solc("0.8.30")
+        install_solc("0.8.20")
     except Exception as e:
         print(f"  Warning: Could not download solc (network issue?): {e}")
         print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.30")
+    solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "AttackBadopTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="shanghai")
+                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     attack_bin = next(v for k, v in comp.items() if k.endswith(":AttackBadopTest"))["bin"].replace("0x", "").strip()
     victim_bin = next(v for k, v in comp.items() if k.endswith(":Victim"))["bin"].replace("0x", "").strip()
 

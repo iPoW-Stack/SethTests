@@ -46,7 +46,11 @@ def test_vm_opcodes(ctx: SethTestContext):
     sender = ctx.ecdsa_addr
 
     # Compile
-    install_solc("0.8.20")
+    try:
+        install_solc("0.8.20")
+    except Exception as e:
+        print(f"  Warning: Could not download solc (network issue?): {e}")
+        print("  Attempting to use existing solc installation...")
     solcx.set_solc_version("0.8.20")
     sol_path = os.path.join(SCRIPT_DIR, "VMTestContract.sol")
     if not os.path.exists(sol_path):

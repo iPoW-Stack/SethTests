@@ -74,7 +74,11 @@ def main():
 
     # Compile & Deploy
     print("\n[Compile & Deploy]")
-    install_solc("0.8.20")
+    try:
+        install_solc("0.8.20")
+    except Exception as e:
+        print(f"  Warning: Could not download solc (network issue?): {e}")
+        print("  Attempting to use existing solc installation...")
     solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "LogShiftTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()

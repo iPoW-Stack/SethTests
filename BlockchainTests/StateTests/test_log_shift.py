@@ -8,7 +8,7 @@ Tests:
 
 Requires: SETH_HOST env var
 """
-import sys, os, secrets
+import sys, os, secrets, time, requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "clipy"))
 
@@ -97,33 +97,68 @@ def main():
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
 
+    # 辅助函数：查询prefund余额
+    def get_prefund_balance(contract_addr, user_addr):
+        prepay_addr = contract_addr + user_addr.replace("0x", "")
+        try:
+            resp = requests.post(cli.query_url, data={"address": prepay_addr}, verify=False).json()
+            return int(resp.get("balance", 0))
+        except Exception as e:
+            print(f"  [WARN] Prefund query failed: {e}")
+            return 0
+
+    # 辅助函数：等待prefund生效
+    def wait_for_prefund(contract_addr, user_addr, min_balance, timeout=60):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            balance = get_prefund_balance(contract_addr, user_addr)
+            if balance >= min_balance:
+                return True
+            time.sleep(2)
+        print(f"  [WARN] Prefund timeout after {timeout}s, balance: {get_prefund_balance(contract_addr, user_addr)}")
+        return False
+
+    # 辅助函数：执行合约调用（先prefund再执行）
+    def call_contract(input_hex, prefund_amount=5_000_000):
+        # 获取当前余额
+        current_balance = get_prefund_balance(addr, sender.replace("0x", ""))
+        target_balance = current_balance + prefund_amount
+        
+        # 发送prefund交易
+        tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=prefund_amount)
+        cli.wait_for_receipt(tx)
+        
+        # 等待prefund生效
+        if not wait_for_prefund(addr, sender.replace("0x", ""), target_balance):
+            print(f"  [WARN] Prefund may not be ready, proceeding anyway...")
+        
+        # 执行合约调用
+        tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=input_hex)
+        return cli.wait_for_receipt(tx)
+
     # ==================== LOG Tests ====================
     print("\n[LOG Tests]")
 
     # LOG0
     inp = sel("emitLog0(uint256)") + eth_abi.encode(["uint256"], [42]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG0 success", rc and rc.get("status") == 0)
     assert_true("LOG0 has events", rc and len(rc.get("events", [])) > 0)
 
     # LOG1
     inp = sel("emitLog1(uint256,uint256)") + eth_abi.encode(["uint256", "uint256"], [1, 100]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG1 success", rc and rc.get("status") == 0)
     assert_true("LOG1 has events", rc and len(rc.get("events", [])) > 0)
 
     # LOG2
     inp = sel("emitLog2(uint256,uint256,uint256)") + eth_abi.encode(["uint256", "uint256", "uint256"], [1, 2, 200]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG2 success", rc and rc.get("status") == 0)
 
     # LOG3
     inp = sel("emitLog3(uint256,uint256,uint256,uint256)") + eth_abi.encode(["uint256"]*4, [1, 2, 3, 300]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG3 success", rc and rc.get("status") == 0)
 
     # Transfer event (indexed address)
@@ -131,14 +166,12 @@ def main():
     sender_addr = sender if sender.startswith("0x") else "0x" + sender
     inp = sel("emitTransfer(address,uint256)") + eth_abi.encode(
         ["address", "uint256"], [to_checksum_address(sender_addr), 1000]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("Transfer event success", rc and rc.get("status") == 0)
 
     # Multiple events
     inp = sel("emitMultiple()")
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("multiple events success", rc and rc.get("status") == 0)
     event_count = len(rc.get("events", [])) if rc else 0
     assert_eq("3 events emitted", event_count, 3)

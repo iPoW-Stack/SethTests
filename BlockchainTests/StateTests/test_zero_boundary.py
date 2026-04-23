@@ -116,7 +116,8 @@ def main():
     with open(os.path.join(SCRIPT_DIR, "ZeroBoundaryTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.30", optimize=True, optimize_runs=200)
+                           solc_version="0.8.30", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     bytecode = next(v for k, v in comp.items() if k.endswith(":ZeroBoundaryTest"))["bin"].replace("0x", "").strip()
 
     addr, ok = deploy(cli, pk, sender, bytecode, "ZeroBoundaryTest")

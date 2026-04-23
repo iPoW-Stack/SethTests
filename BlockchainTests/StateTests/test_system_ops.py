@@ -102,7 +102,8 @@ def main():
     with open(os.path.join(SCRIPT_DIR, "SystemOpsTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.30", optimize=True, optimize_runs=200)
+                           solc_version="0.8.30", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     contract = next(v for k, v in comp.items() if "SystemOpsTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
 

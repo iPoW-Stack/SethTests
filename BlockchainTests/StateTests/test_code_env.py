@@ -130,7 +130,8 @@ def main():
     with open(os.path.join(SCRIPT_DIR, "CodeTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.30", optimize=True, optimize_runs=200)
+                           solc_version="0.8.30", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     code_bin = next(v for k, v in comp.items() if k.endswith(":CodeTestContract"))["bin"].replace("0x", "").strip()
     target_bin = next(v for k, v in comp.items() if k.endswith(":SimpleTarget"))["bin"].replace("0x", "").strip()
 

@@ -89,7 +89,7 @@ contract TxIntegrationTarget {
 
 
 def _settle():
-    time.sleep(3)
+    time.sleep(5)
 
 
 def test_nonce_progression_on_sequential_transfers(ctx: SethTestContext):

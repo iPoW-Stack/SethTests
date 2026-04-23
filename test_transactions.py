@@ -153,6 +153,7 @@ def test_chain_id(ctx: SethTestContext):
 def test_value_transfer_to_contract(ctx: SethTestContext):
     """Test sending value to a contract with receive() function."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
+    time.sleep(3)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=500000)
     assert_tx_success(receipt, "value_transfer_deposit_tx")
     events = receipt.get('decoded_events', [])
@@ -167,12 +168,13 @@ def test_multiple_transfers_sequential(ctx: SethTestContext):
             {'to': dest, 'value': 100000}, ctx.ecdsa_key
         )
         assert_tx_success(receipt, f"sequential_transfer_{i+1}")
-        time.sleep(1)
+        time.sleep(5)
 
 
 def test_contract_call_with_value(ctx: SethTestContext):
     """Test contract call that includes value transfer."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
+    time.sleep(3)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=1000000)
     assert_tx_success(receipt, "call_with_value_tx")
     total = contract.functions.totalReceived().call()[0]
@@ -183,6 +185,7 @@ def test_contract_call_with_value(ctx: SethTestContext):
 def test_gas_consumption(ctx: SethTestContext):
     """Test that gas is consumed during contract execution."""
     contract = deploy_contract_with_prefund(ctx, GAS_TRACKER_SOL, "GasTracker")
+    time.sleep(3)
     receipt = contract.functions.doWork(10).transact(ctx.ecdsa_key)
     assert_tx_success(receipt, "gas_consumption_work_tx")
     ops = contract.functions.totalOps().call()

@@ -163,6 +163,7 @@ def deploy_contract(ctx: SethTestContext, source: str, name: str,
         'args': args or [],
         'amount': amount,
     }, ctx.ecdsa_key)
+    time.sleep(CONSENSUS_SETTLE_DELAY)
     return contract
 
 def deploy_contract_with_prefund(ctx: SethTestContext, source: str, name: str,

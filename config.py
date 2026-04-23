@@ -30,7 +30,7 @@ DEFAULT_SHARD_ID = "0"
 # --- Timing ---
 TX_RECEIPT_POLL_INTERVAL = 3   # seconds
 TX_RECEIPT_MAX_WAIT = 120       # seconds
-CONSENSUS_SETTLE_DELAY = 2      # seconds
+CONSENSUS_SETTLE_DELAY = 5      # seconds — wait for nonce to update between txs
 
 # --- Salt for CREATE2 deployments ---
 import secrets

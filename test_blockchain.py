@@ -72,7 +72,7 @@ contract ChainCounter {
 """
 
 
-def _settle(delay: int = 3):
+def _settle(delay: int = 5):
     time.sleep(delay)
 
 

@@ -101,15 +101,15 @@ def main():
     # Compile
     print("\n[Compile]")
     try:
-        install_solc("0.8.20")
+        install_solc("0.8.30")
     except Exception as e:
         print(f"  Warning: Could not download solc (network issue?): {e}")
         print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.20")
+    solcx.set_solc_version("0.8.30")
     with open(os.path.join(SCRIPT_DIR, "CallTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200)
+                           solc_version="0.8.30", optimize=True, optimize_runs=200)
     callee_bin = next(v for k, v in comp.items() if k.endswith(":Callee"))["bin"].replace("0x", "").strip()
     caller_bin_raw = next(v for k, v in comp.items() if k.endswith(":CallTestContract"))["bin"].replace("0x", "").strip()
 

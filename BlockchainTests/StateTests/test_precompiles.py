@@ -85,15 +85,15 @@ def main():
     # Compile
     print("\n[Compile]")
     try:
-        install_solc("0.8.20")
+        install_solc("0.8.30")
     except Exception as e:
         print(f"  Warning: Could not download solc (network issue?): {e}")
         print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.20")
+    solcx.set_solc_version("0.8.30")
     with open(os.path.join(SCRIPT_DIR, "PrecompileTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200)
+                           solc_version="0.8.30", optimize=True, optimize_runs=200)
     contract = next(v for k, v in comp.items() if "PrecompileTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
 

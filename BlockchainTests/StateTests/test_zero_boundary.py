@@ -117,7 +117,7 @@ def main():
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
                            solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="paris")
+                           evm_version="shanghai")
     bytecode = next(v for k, v in comp.items() if k.endswith(":ZeroBoundaryTest"))["bin"].replace("0x", "").strip()
 
     addr, ok = deploy(cli, pk, sender, bytecode, "ZeroBoundaryTest")

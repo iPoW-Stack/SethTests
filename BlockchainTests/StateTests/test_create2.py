@@ -128,7 +128,7 @@ def main():
     solcx.set_solc_version("0.8.30")
     comp = compile_source(CREATE2_FACTORY_SOL, output_values=["abi", "bin"],
                            solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="paris")
+                           evm_version="shanghai")
     factory_contract = next(v for k, v in comp.items() if "Create2Factory" in k)
     factory_bin = factory_contract["bin"].replace("0x", "").strip()
 

@@ -110,7 +110,7 @@ def main():
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
                            solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="paris")
+                           evm_version="shanghai")
     callee_bin = next(v for k, v in comp.items() if k.endswith(":Callee"))["bin"].replace("0x", "").strip()
     caller_bin_raw = next(v for k, v in comp.items() if k.endswith(":CallTestContract"))["bin"].replace("0x", "").strip()
 

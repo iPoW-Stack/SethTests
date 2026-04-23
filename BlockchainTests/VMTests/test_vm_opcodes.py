@@ -93,7 +93,7 @@ def main():
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
                            solc_version="0.8.30", optimize=True, optimize_runs=200,
-                           evm_version="paris")
+                           evm_version="shanghai")
     contract = next(v for k, v in comp.items() if "VMTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
     print("  compiled.")

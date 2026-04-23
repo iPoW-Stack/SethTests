@@ -111,7 +111,7 @@ def deploy(cli, pk, sender, bytecode, label):
 
 
 def main():
-    host = os.getenv("SETH_HOST", "35.197.170.240")
+    host = os.getenv("SETH_HOST", "127.0.0.1")
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
@@ -168,8 +168,9 @@ def main():
 
     # Test 2: EXTCODESIZE of EOA = 0
     print("\n[Test 2] EXTCODESIZE: EOA")
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
     raw = safe_query(cli, sender, code_addr,
-        sel("getCodeSize(address)") + eth_abi.encode(["address"], [to_checksum_address("0x" + sender)]).hex(),
+        sel("getCodeSize(address)") + eth_abi.encode(["address"], [to_checksum_address(sender_addr)]).hex(),
         "EXTCODESIZE EOA")
     if raw is not None:
         assert_eq("EOA code size = 0", decode_uint256(raw), 0)
@@ -245,8 +246,9 @@ def main():
 
     time.sleep(1)
 
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
     raw = safe_query(cli, sender, code_addr,
-        sel("isContract(address)") + eth_abi.encode(["address"], [to_checksum_address("0x" + sender)]).hex(),
+        sel("isContract(address)") + eth_abi.encode(["address"], [to_checksum_address(sender_addr)]).hex(),
         "isContract(EOA)")
     if raw is not None:
         assert_eq("EOA isContract = false", decode_bool(raw), False)

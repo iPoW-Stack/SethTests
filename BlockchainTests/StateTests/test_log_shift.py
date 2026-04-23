@@ -64,7 +64,7 @@ def calc_create2(deployer, salt_hex, bytecode_hex):
 
 
 def main():
-    host = os.getenv("SETH_HOST", "35.197.170.240")
+    host = os.getenv("SETH_HOST", "127.0.0.1")
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
@@ -127,8 +127,10 @@ def main():
     assert_true("LOG3 success", rc and rc.get("status") == 0)
 
     # Transfer event (indexed address)
+    # 确保sender格式正确（移除可能存在的0x前缀，然后统一添加）
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
     inp = sel("emitTransfer(address,uint256)") + eth_abi.encode(
-        ["address", "uint256"], [to_checksum_address("0x" + sender), 1000]).hex()
+        ["address", "uint256"], [to_checksum_address(sender_addr), 1000]).hex()
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
     rc = cli.wait_for_receipt(tx)
     assert_true("Transfer event success", rc and rc.get("status") == 0)

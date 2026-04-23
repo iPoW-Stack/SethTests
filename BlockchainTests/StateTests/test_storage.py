@@ -88,7 +88,7 @@ def query(cli, sender, addr, sig, types=None, args=None):
 
 
 def main():
-    host = os.getenv("SETH_HOST", "35.197.170.240")
+    host = os.getenv("SETH_HOST", "127.0.0.1")
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
@@ -151,7 +151,8 @@ def main():
 
     # Test 6: Address mapping
     print("\n[Test 6] Address mapping")
-    test_addr = to_checksum_address("0x" + sender)
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
+    test_addr = to_checksum_address(sender_addr)
     call_tx(cli, pk, addr, "setBalance(address,uint256)", ["address", "uint256"], [test_addr, 9999])
     assert_eq("balances[sender] = 9999",
               decode_uint256(query(cli, sender, addr, "getBalance(address)", ["address"], [test_addr])), 9999)

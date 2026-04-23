@@ -65,7 +65,7 @@ def test_vm_opcodes(ctx: SethTestContext):
     bytecode = contract["bin"].replace("0x", "").strip()
 
     # Deploy
-    salt = "ff10"
+    salt = secrets.token_hex(32)  # 生成随机salt避免地址冲突
     addr = _calc_create2(sender, salt, bytecode)
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)

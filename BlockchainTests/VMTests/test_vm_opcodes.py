@@ -71,7 +71,7 @@ def decode_address(raw):
 
 
 def main():
-    host = os.getenv("SETH_HOST", "35.197.170.240")
+    host = os.getenv("SETH_HOST", "127.0.0.1")
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
@@ -110,7 +110,7 @@ def main():
         kf.update(b"\xff" + d + s + kc.digest())
         return kf.digest()[-20:].hex()
 
-    salt = "ff10"
+    salt = secrets.token_hex(32)  # 生成随机salt避免地址冲突
     addr = calc_create2(sender, salt, bytecode)
     print(f"  contract: {addr}")
 

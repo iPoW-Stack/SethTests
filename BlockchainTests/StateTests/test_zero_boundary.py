@@ -98,7 +98,7 @@ def safe_tx(cli, pk, addr, inp, label, prefund=5_000_000):
 
 
 def main():
-    host = os.getenv("SETH_HOST", "35.197.170.240")
+    host = os.getenv("SETH_HOST", "127.0.0.1")
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
@@ -194,8 +194,9 @@ def main():
 
     # Test 9: Balance of sender
     print("\n[Test 9] Balance of sender")
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
     raw = safe_query(cli, sender, addr,
-        sel("getBalance(address)") + eth_abi.encode(["address"], [to_checksum_address("0x" + sender)]).hex(),
+        sel("getBalance(address)") + eth_abi.encode(["address"], [to_checksum_address(sender_addr)]).hex(),
         "getBalance(sender)")
     if raw:
         bal = decode_uint256(raw)

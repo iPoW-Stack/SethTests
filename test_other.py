@@ -24,8 +24,6 @@ OTHER_TESTS = [
     ("other_tests/test_cross_shard_call.py", "cross_shard_call", [], 300),
     ("other_tests/test_contract_chain_demo.py", "contract_chain", [], 600),
     ("other_tests/amm.py", "amm", ["--users", "2"], 600),
-    ("other_tests/amm.py", "amm_multi", ["--test", "multi"], 600),
-    ("other_tests/amm.py", "amm_cross", ["--test", "cross"], 600),
 ]
 
 

@@ -104,7 +104,7 @@ def test_simple_transfer(ctx: SethTestContext):
 
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         balance_after = ctx.get_balance(dest)
         if balance_after > balance_before:
             break
@@ -123,7 +123,7 @@ def test_transfer_zero_value(ctx: SethTestContext):
     assert_tx_success(receipt, "transfer_zero_value_success")
     count = 0
     while count < 10:
-        time.sleep(2)
+        time.sleep(1)
         count += 1
 
     balance_after = ctx.get_balance(dest)
@@ -153,7 +153,7 @@ def test_chain_id(ctx: SethTestContext):
 def test_value_transfer_to_contract(ctx: SethTestContext):
     """Test sending value to a contract with receive() function."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
-    time.sleep(3)
+    time.sleep(1)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=500000)
     assert_tx_success(receipt, "value_transfer_deposit_tx")
     events = receipt.get('decoded_events', [])
@@ -168,13 +168,13 @@ def test_multiple_transfers_sequential(ctx: SethTestContext):
             {'to': dest, 'value': 100000}, ctx.ecdsa_key
         )
         assert_tx_success(receipt, f"sequential_transfer_{i+1}")
-        time.sleep(5)
+        time.sleep(1)
 
 
 def test_contract_call_with_value(ctx: SethTestContext):
     """Test contract call that includes value transfer."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
-    time.sleep(3)
+    time.sleep(1)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=1000000)
     assert_tx_success(receipt, "call_with_value_tx")
     total = contract.functions.totalReceived().call()[0]
@@ -185,7 +185,7 @@ def test_contract_call_with_value(ctx: SethTestContext):
 def test_gas_consumption(ctx: SethTestContext):
     """Test that gas is consumed during contract execution."""
     contract = deploy_contract_with_prefund(ctx, GAS_TRACKER_SOL, "GasTracker")
-    time.sleep(3)
+    time.sleep(1)
     receipt = contract.functions.doWork(10).transact(ctx.ecdsa_key)
     assert_tx_success(receipt, "gas_consumption_work_tx")
     ops = contract.functions.totalOps().call()
@@ -197,7 +197,7 @@ def test_nonce_increment(ctx: SethTestContext):
     initial_nonce = ctx.get_nonce(ctx.ecdsa_addr)
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
     ctx.w3.seth.send_transaction({'to': dest, 'value': 1000}, ctx.ecdsa_key)
-    time.sleep(3)
+    time.sleep(1)
     new_nonce = ctx.get_nonce(ctx.ecdsa_addr)
     assert_true(
         new_nonce >= initial_nonce,

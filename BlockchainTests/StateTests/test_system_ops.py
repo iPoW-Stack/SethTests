@@ -116,10 +116,10 @@ def main():
     deploy_ok = rc and rc.get("status") == 0
     assert_true("deploy", deploy_ok)
 
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
 
     if not deploy_ok:
         print("\n  Deploy failed, skipping query tests")
@@ -129,7 +129,7 @@ def main():
         return failed
 
     # Wait for node to stabilize
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: Owner set in constructor
     print("\n[Test 1] Owner = deployer")
@@ -149,7 +149,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("setValue success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
     raw = safe_query(cli, sender, addr, sel("value()"), "value()")
     if raw is not None:
         assert_eq("value = 555", decode_uint256(raw), 555)

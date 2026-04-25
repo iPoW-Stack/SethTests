@@ -101,10 +101,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -158,7 +158,7 @@ def main():
     tx = cli.send_transaction_auto(pk, helper_addr, StepType.kContractExcute,
                                     input_hex=inp, prefund=5_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: STATICCALL add(3,4) = 7
     print("\n[Test 1] STATICCALL: add(3,4)")
@@ -218,7 +218,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("delegateSetVal tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     # Test 6: readVal should be 777 (main's storage changed by delegatecall)
     print("\n[Test 6] readVal after delegateSetVal")

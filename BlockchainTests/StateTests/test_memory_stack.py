@@ -107,10 +107,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -145,7 +145,7 @@ def main():
         print(f"\nResults: {passed} passed, {failed} failed")
         return failed
 
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: MSTORE/MLOAD
     print("\n[Test 1] MSTORE/MLOAD round-trip")

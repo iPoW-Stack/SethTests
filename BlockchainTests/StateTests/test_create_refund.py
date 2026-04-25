@@ -96,10 +96,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -134,7 +134,7 @@ def main():
         print(f"\nResults: {passed} passed, {failed} failed")
         return failed
 
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: CREATE via new — createChild(42)
     print("\n[Test 1] CREATE: createChild(42)")
@@ -144,7 +144,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("createChild tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     # Test 2: CREATE2 via new{salt} — create2Child(99, salt)
     print("\n[Test 2] CREATE2: create2Child(99, salt)")
@@ -155,7 +155,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("create2Child tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     # Test 3: Nested create
     print("\n[Test 3] Nested CREATE: nestedCreate(123)")
@@ -165,7 +165,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("nestedCreate tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     # Test 4: CREATE reverting constructor
     print("\n[Test 4] CREATE: reverting constructor")
@@ -175,7 +175,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("createReverting tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     # Test 5: Gas refund — clearSlot (SSTORE non-zero to zero)
     print("\n[Test 5] Gas refund: clearSlot")
@@ -194,7 +194,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("clearSlot tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     raw = safe_query(cli, sender, addr, sel("refundSlot()"), "refundSlot after")
     if raw:
@@ -212,7 +212,7 @@ def main():
     rc = cli.wait_for_receipt(tx)
     assert_true("setThenClear tx success", rc and rc.get("status") == 0)
 
-    time.sleep(3)
+    time.sleep(1)
 
     raw = safe_query(cli, sender, addr, sel("tempSlot()"), "tempSlot")
     if raw:

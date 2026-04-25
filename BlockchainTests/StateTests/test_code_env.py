@@ -103,10 +103,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -150,7 +150,7 @@ def main():
 
     # Wait longer for node HTTPS connection pool to recover after deploy phase
     print("\n  Waiting 15s for node connection pool to recover...")
-    time.sleep(15)
+    time.sleep(1)
 
     # Test 1: EXTCODESIZE of contract > 0
     print("\n[Test 1] EXTCODESIZE: contract")

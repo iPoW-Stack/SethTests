@@ -91,7 +91,7 @@ def test_prefund_basic_deposit(ctx: SethTestContext):
 
     count = 0
     while count < 10:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp > initial_pp:
             break
@@ -120,7 +120,7 @@ def test_prefund_multiple_deposits(ctx: SethTestContext):
 
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + 5000000:
             break
@@ -147,7 +147,7 @@ def test_prefund_gas_consumption(ctx: SethTestContext):
 
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + deposit_amount:
             break
@@ -163,7 +163,7 @@ def test_prefund_gas_consumption(ctx: SethTestContext):
 
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp < deposit_amount:
             break
@@ -187,7 +187,7 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
     contract.prefund(5000000, ctx.ecdsa_key)
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= 5000000:
             break
@@ -206,7 +206,7 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
     # which should be >= pp_before since extra_prepay should cover gas
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     for _ in range(30):
-        time.sleep(2)
+        time.sleep(1)
         pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp_after >= pp_before:
             break
@@ -227,7 +227,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     contract.prefund(20000000, ctx.ecdsa_key)
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= + initial_pp + 20000000:
             break
@@ -249,7 +249,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     assert_tx_success(receipt, "prefund_heavy_compute")
     count = 0
     while count < 30:
-        time.sleep(2)
+        time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp < pp_before:
             break

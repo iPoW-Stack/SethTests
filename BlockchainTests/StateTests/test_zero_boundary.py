@@ -75,10 +75,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -89,11 +89,11 @@ def safe_tx(cli, pk, addr, inp, label, prefund=5_000_000):
         tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute,
                                         input_hex=inp, prefund=prefund)
         rc = cli.wait_for_receipt(tx)
-        time.sleep(3)
+        time.sleep(1)
         return rc
     except Exception as e:
         print(f"  ✗ {label}: tx failed - {e}")
-        time.sleep(3)
+        time.sleep(1)
         return None
 
 
@@ -125,7 +125,7 @@ def main():
     if not ok:
         print(f"\nResults: {passed} passed, {failed} failed"); return failed
 
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: Zero-value CALL to self
     print("\n[Test 1] Zero-value CALL to contract")

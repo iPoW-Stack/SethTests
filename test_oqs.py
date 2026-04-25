@@ -54,7 +54,7 @@ def test_oqs_transfer(ctx):
         after = ctx.get_balance(dest)
         if after > before:
             break
-        time.sleep(2)
+        time.sleep(1)
     assert_greater_than(after, before, "oqs_transfer")
 
 def test_oqs_contract_deploy(ctx):

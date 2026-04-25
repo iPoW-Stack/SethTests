@@ -55,23 +55,30 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
 
         output = r.stdout + r.stderr
 
-        # Try to parse "X/Y tests passed" or "X passed, Y failed" patterns
+        # Count ✅ and ❌ in output lines to get per-test-case counts
         passed_count = 0
         failed_count = 0
         for line in output.splitlines():
-            # Pattern: "Total: X/Y tests passed"
+            # Count ✅ PASS / ✅ SUCCESS / ✅ <anything>
+            if "✅" in line:
+                passed_count += 1
+            # Count ❌ FAIL / ❌ FAILED / ❌ <anything>
+            if "❌" in line:
+                failed_count += 1
+
+        # Also try to parse "X/Y tests passed" or "X passed, Y failed" patterns
+        for line in output.splitlines():
             if "tests passed" in line.lower():
                 parts = line.strip().split()
                 for p in parts:
                     if "/" in p:
                         try:
-                            passed_count, total = p.split("/")
-                            passed_count = int(passed_count)
+                            p_count, total = p.split("/")
+                            passed_count = int(p_count)
                             failed_count = int(total) - passed_count
                         except ValueError:
                             pass
-            # Pattern: "X passed, Y failed"
-            if "passed" in line and "failed" in line:
+            if "passed" in line and "failed" in line and "Results:" in line:
                 parts = line.strip().split()
                 for i, p in enumerate(parts):
                     if p == "passed," and i > 0:
@@ -81,13 +88,11 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
                         try: failed_count = int(parts[i-1])
                         except ValueError: pass
 
-        # Check for PASSED/FAILED keywords in output
-        output_upper = output.upper()
-        has_passed = "PASSED" in output_upper or "PASS" in output_upper
-        has_failed = "FAILED" in output_upper or "FAIL" in output_upper
+        total_count = passed_count + failed_count
 
         if r.returncode == 0:
-            detail = f"{passed_count} passed" if passed_count > 0 else "ok"
+            detail = f"{passed_count} passed" if total_count > 0 else "ok"
+            # Add extra counts beyond the 1 that record_pass will add
             if passed_count > 1:
                 results.passed += passed_count - 1
             results.record_pass(f"other_{label} ({detail})")

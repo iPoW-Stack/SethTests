@@ -6,6 +6,7 @@ EIP-1559 Transaction Test for Seth Blockchain
 import sys
 import time
 import os
+import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from seth3 import SethWeb3Mock, _eth_sign_and_send
@@ -21,7 +22,30 @@ def wait_nonce(w3, addr, expected, timeout=60):
     return w3.client.get_nonce(addr)
 
 
-def test_eip1559_transfer(w3, MY, KEY):
+def get_chain_id(client) -> int:
+    """Query chain_id from the node via eth_chainId RPC"""
+    rpc_url = f"{client.base_url}/eth"
+    rpc_body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_chainId",
+        "params": []
+    }
+    try:
+        resp = requests.post(rpc_url, json=rpc_body, verify=False, timeout=10)
+        result = resp.json()
+        if "error" in result:
+            raise RuntimeError(f"eth_chainId error: {result['error']}")
+        chain_id_hex = result.get("result", "0x0")
+        chain_id = int(chain_id_hex, 16)
+        print(f"  Chain ID: {chain_id} (0x{chain_id:x})")
+        return chain_id
+    except Exception as e:
+        print(f"  ⚠️  Failed to query chain_id: {e}, using default 3355103125")
+        return 3355103125
+
+
+def test_eip1559_transfer(w3, MY, KEY, chain_id):
     """Test EIP-1559 native token transfer"""
     print("\n" + "=" * 70)
     print("TEST CASE 1: EIP-1559 Native Token Transfer")
@@ -50,6 +74,7 @@ def test_eip1559_transfer(w3, MY, KEY):
             b'',
             tx_nonce,
             gas_limit=21000,
+            chain_id=chain_id,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
             max_fee_per_gas=2
@@ -74,7 +99,7 @@ def test_eip1559_transfer(w3, MY, KEY):
         return False
 
 
-def test_eip1559_transfer_2(w3, MY, KEY):
+def test_eip1559_transfer_2(w3, MY, KEY, chain_id):
     """Test second EIP-1559 transfer to verify sequential nonce works"""
     print("\n" + "=" * 70)
     print("TEST CASE 2: EIP-1559 Second Transfer (sequential nonce)")
@@ -99,6 +124,7 @@ def test_eip1559_transfer_2(w3, MY, KEY):
             b'',
             tx_nonce,
             gas_limit=21000,
+            chain_id=chain_id,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
             max_fee_per_gas=2
@@ -119,7 +145,7 @@ def test_eip1559_transfer_2(w3, MY, KEY):
         return False
 
 
-def test_eip1559_contract_deploy(w3, MY, KEY):
+def test_eip1559_contract_deploy(w3, MY, KEY, chain_id):
     """Test EIP-1559 contract deployment"""
     print("\n" + "=" * 70)
     print("TEST CASE 3: EIP-1559 Contract Deployment")
@@ -159,6 +185,7 @@ def test_eip1559_contract_deploy(w3, MY, KEY):
             bytes.fromhex(bytecode),
             tx_nonce,
             gas_limit=5000000,
+            chain_id=chain_id,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
             max_fee_per_gas=2
@@ -205,16 +232,20 @@ def main():
     nonce = w3.client.get_nonce(MY)
     print(f"Current Nonce: {nonce}")
 
+    # Query chain_id from node
+    print(f"\nQuerying chain_id from {args.host}:{args.port}...")
+    chain_id = get_chain_id(w3.client)
+
     results = []
 
     # Test 1: Transfer
-    results.append(("EIP-1559 Transfer #1", test_eip1559_transfer(w3, MY, args.key)))
+    results.append(("EIP-1559 Transfer #1", test_eip1559_transfer(w3, MY, args.key, chain_id)))
 
     # Test 2: Second transfer (sequential nonce)
-    results.append(("EIP-1559 Transfer #2", test_eip1559_transfer_2(w3, MY, args.key)))
+    results.append(("EIP-1559 Transfer #2", test_eip1559_transfer_2(w3, MY, args.key, chain_id)))
 
     # Test 3: Contract deploy
-    results.append(("EIP-1559 Contract Deploy", test_eip1559_contract_deploy(w3, MY, args.key)))
+    results.append(("EIP-1559 Contract Deploy", test_eip1559_contract_deploy(w3, MY, args.key, chain_id)))
 
     # Summary
     print("\n" + "=" * 70)

@@ -7,6 +7,7 @@ from utils import SethTestContext, Color, print_section, results
 import test_core_evm, test_contracts, test_transactions, test_transaction_integration
 import test_blockchain, test_prefund, test_oqs
 import test_basic, test_genesis, test_vm_opcodes, test_onchain
+import test_other
 
 MODULE_MAP = {
     "core": test_core_evm,
@@ -20,13 +21,14 @@ MODULE_MAP = {
     "genesis": test_genesis,
     "vm": test_vm_opcodes,
     "onchain": test_onchain,
+    "other": test_other,
 }
 
 def parse_args():
     p = argparse.ArgumentParser(description="Seth EVM Compatibility Test Suite")
     p.add_argument("--host", default=None, help="Seth node host")
     p.add_argument("--port", type=int, default=None, help="Seth node port")
-    p.add_argument("--phase", type=int, choices=[1, 2, 3, 4, 5], help="Run specific phase")
+    p.add_argument("--phase", type=int, choices=[1, 2, 3, 4, 5, 6], help="Run specific phase")
     p.add_argument("--module", choices=list(MODULE_MAP.keys()),
                    help="Run specific module")
     p.add_argument("--skip-oqs", action="store_true")
@@ -57,6 +59,7 @@ def list_tests():
         ("Phase 5A: Genesis", "genesis", test_genesis),
         ("Phase 5B: VM Opcodes", "vm", test_vm_opcodes),
         ("Phase 5C: On-chain State Tests", "onchain", test_onchain),
+        ("Phase 6:  Other Tests (AMM, Cross-Shard, EIP-1559)", "other", test_other),
     ]
     print()
     print("Available Test Modules:")
@@ -100,6 +103,8 @@ def main():
         test_genesis.run_all(ctx)
         test_vm_opcodes.run_all(ctx)
         test_onchain.run_all(ctx)
+    elif args.phase == 6:
+        test_other.run_all(ctx)
     else:
         # Run everything
         # Phase 0: Offline basic tests
@@ -120,6 +125,8 @@ def main():
         test_genesis.run_all(ctx)
         test_vm_opcodes.run_all(ctx)
         test_onchain.run_all(ctx)
+        # Phase 6: Other tests (AMM, Cross-Shard, EIP-1559)
+        test_other.run_all(ctx)
 
     elapsed = time.time() - t0
     ok = results.summary()

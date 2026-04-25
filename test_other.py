@@ -24,6 +24,7 @@ OTHER_TESTS = [
     ("other_tests/test_cross_shard_call.py", "cross_shard_call", [], 300),
     ("other_tests/test_contract_chain_demo.py", "contract_chain", [], 600),
     ("other_tests/amm.py", "amm", ["--users", "2"], 600),
+    ("other_tests/seth3.py", "seth3", [], 900),
 ]
 
 
@@ -35,10 +36,14 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
         return
 
     try:
-        cmd = [sys.executable, path,
-               "--host", str(SETH_HOST),
-               "--port", str(SETH_PORT),
-               "--key", TEST_ECDSA_KEY] + extra_args
+        # seth3.py doesn't accept --host/--port/--key args, run it directly
+        if label == "seth3":
+            cmd = [sys.executable, path] + extra_args
+        else:
+            cmd = [sys.executable, path,
+                   "--host", str(SETH_HOST),
+                   "--port", str(SETH_PORT),
+                   "--key", TEST_ECDSA_KEY] + extra_args
 
         r = subprocess.run(
             cmd,

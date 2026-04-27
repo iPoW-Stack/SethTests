@@ -34,12 +34,13 @@ def parse_args():
     return p.parse_args()
 
 def print_banner(ctx):
+    import config
     sep = "=" * 60
     print()
     print(sep)
     print("  Seth EVM Compatibility Test Suite")
     print(sep)
-    print(f"  Node:  http://{SETH_HOST}:{SETH_PORT}")
+    print(f"  Node:  http://{config.SETH_HOST}:{config.SETH_PORT}")
     print(f"  ECDSA: {ctx.ecdsa_addr}")
     print(sep)
     print()
@@ -74,8 +75,14 @@ def list_tests():
 
 def main():
     args = parse_args()
-    if args.host: import config; config.SETH_HOST = args.host
-    if args.port: import config; config.SETH_PORT = args.port
+    if args.host:
+        import config
+        config.SETH_HOST = args.host
+        os.environ["SETH_HOST"] = args.host
+    if args.port:
+        import config
+        config.SETH_PORT = args.port
+        os.environ["SETH_PORT"] = str(args.port)
     ctx = SethTestContext()
     if args.list: list_tests(); return
     print_banner(ctx)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess, sys, os
 
 from utils import SethTestContext, print_section, results
-from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
+import config
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -79,10 +79,10 @@ def _run_script(rel_path: str, label: str, env: dict):
 def run_all(ctx: SethTestContext):
     print_section("On-chain State Tests (subprocess)")
     env = os.environ.copy()
-    env["SETH_HOST"] = str(SETH_HOST)
-    env["SETH_PORT"] = str(SETH_PORT)
+    env["SETH_HOST"] = str(config.SETH_HOST)
+    env["SETH_PORT"] = str(config.SETH_PORT)
     # Pass the test key so scripts that use DEPLOYER_PK can pick it up
-    env["DEPLOYER_PK"] = TEST_ECDSA_KEY
+    env["DEPLOYER_PK"] = config.TEST_ECDSA_KEY
 
     for rel_path, label in ONCHAIN_TESTS:
         _run_script(rel_path, label, env)

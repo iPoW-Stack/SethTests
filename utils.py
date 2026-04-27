@@ -79,10 +79,11 @@ class SethTestContext:
     """Holds shared state for all tests: client, accounts, etc."""
 
     def __init__(self):
-        self.w3 = SethWeb3Mock(SETH_HOST, SETH_PORT)
+        import config as _cfg
+        self.w3 = SethWeb3Mock(_cfg.SETH_HOST, _cfg.SETH_PORT)
         self.client: SethClient = self.w3.client
-        self.ecdsa_key = TEST_ECDSA_KEY
-        self.ecdsa_addr = self.client.get_address(TEST_ECDSA_KEY)
+        self.ecdsa_key = _cfg.TEST_ECDSA_KEY
+        self.ecdsa_addr = self.client.get_address(_cfg.TEST_ECDSA_KEY)
         self.salt_counter = 0
 
     def next_salt(self) -> str:

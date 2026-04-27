@@ -89,7 +89,7 @@ contract TxIntegrationTarget {
 
 
 def _settle():
-    time.sleep(5)
+    time.sleep(1)
 
 
 def test_nonce_progression_on_sequential_transfers(ctx: SethTestContext):
@@ -190,7 +190,7 @@ def test_contract_balance_withdraw_roundtrip(ctx: SethTestContext):
         after = ctx.get_balance(recipient)
         if after > before:
             break
-        time.sleep(2)
+        time.sleep(1)
     assert_greater_than(after, before, "txint_roundtrip_recipient_balance_increased")
     assert_not_equal(contract.functions.totalReceived().call(), 0, "txint_roundtrip_total_received_nonzero")
 

@@ -165,7 +165,7 @@ def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
         balance_after = ctx.get_balance(dest)
         if balance_after > balance_before:
             break
-        time.sleep(2)
+        time.sleep(1)
     assert_greater_than(balance_after, balance_before, "bc_balance_increased")
 
 

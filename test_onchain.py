@@ -61,8 +61,14 @@ def _run_script(rel_path: str, label: str, env: dict):
                         except ValueError: pass
 
         if r.returncode == 0:
+            # 将子进程中的实际测试数量加到总数中
+            # 减去1是因为record_pass本身会加1
+            results.passed += passed_count - 1 if passed_count > 0 else 0
             results.record_pass(f"onchain_{label} ({passed_count} passed)")
         else:
+            # 记录子进程中的实际通过/失败数量
+            results.passed += passed_count
+            results.failed += failed_count - 1 if failed_count > 0 else 0
             results.record_fail(f"onchain_{label}",
                                 f"{failed_count} failed, {passed_count} passed, exit={r.returncode}")
             # Print last 20 lines of output for debugging

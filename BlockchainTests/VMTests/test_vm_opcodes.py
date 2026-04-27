@@ -83,12 +83,17 @@ def main():
 
     # ---- Compile ----
     print("\n[Compile] VMTestContract.sol")
-    install_solc("0.8.20")
+    try:
+        install_solc("0.8.20")
+    except Exception as e:
+        print(f"  Warning: Could not download solc (network issue?): {e}")
+        print("  Attempting to use existing solc installation...")
     solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "VMTestContract.sol"), "r") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200)
+                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     contract = next(v for k, v in comp.items() if "VMTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
     print("  compiled.")
@@ -105,7 +110,7 @@ def main():
         kf.update(b"\xff" + d + s + kc.digest())
         return kf.digest()[-20:].hex()
 
-    salt = "ff10"
+    salt = secrets.token_hex(32)  # 生成随机salt避免地址冲突
     addr = calc_create2(sender, salt, bytecode)
     print(f"  contract: {addr}")
 

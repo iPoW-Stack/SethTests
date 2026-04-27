@@ -107,10 +107,10 @@ def deploy(cli, pk, sender, bytecode, label):
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
                                     contract_code=bytecode, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(2)
+    time.sleep(1)
     return addr, rc and rc.get("status") == 0
 
 
@@ -124,12 +124,17 @@ def main():
     sender = cli.get_address(pk)
 
     print("\n[Compile & Deploy]")
-    install_solc("0.8.20")
+    try:
+        install_solc("0.8.20")
+    except Exception as e:
+        print(f"  Warning: Could not download solc (network issue?): {e}")
+        print("  Attempting to use existing solc installation...")
     solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "MemoryStackTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200)
+                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     bytecode = next(v for k, v in comp.items() if k.endswith(":MemoryStackTest"))["bin"].replace("0x", "").strip()
 
     addr, ok = deploy(cli, pk, sender, bytecode, "MemoryStackTest")
@@ -140,7 +145,7 @@ def main():
         print(f"\nResults: {passed} passed, {failed} failed")
         return failed
 
-    time.sleep(5)
+    time.sleep(1)
 
     # Test 1: MSTORE/MLOAD
     print("\n[Test 1] MSTORE/MLOAD round-trip")

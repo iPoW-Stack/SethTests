@@ -8,7 +8,7 @@ Tests:
 
 Requires: SETH_HOST env var
 """
-import sys, os, secrets
+import sys, os, secrets, time, requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "clipy"))
 
@@ -74,12 +74,17 @@ def main():
 
     # Compile & Deploy
     print("\n[Compile & Deploy]")
-    install_solc("0.8.20")
+    try:
+        install_solc("0.8.20")
+    except Exception as e:
+        print(f"  Warning: Could not download solc (network issue?): {e}")
+        print("  Attempting to use existing solc installation...")
     solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "LogShiftTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
     comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200)
+                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+                           evm_version="paris")
     contract = next(v for k, v in comp.items() if "LogShiftTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
 
@@ -92,46 +97,73 @@ def main():
     tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
     cli.wait_for_receipt(tx)
 
+    # 辅助函数：查询prefund余额
+    def get_prefund_balance(contract_addr, user_addr):
+        # 确保地址格式正确（不带0x前缀）
+        contract_clean = contract_addr.replace("0x", "")
+        user_clean = user_addr.replace("0x", "")
+        prepay_addr = contract_clean + user_clean
+        try:
+            resp = requests.post(cli.query_url, data={"address": prepay_addr}, verify=False, timeout=5).json()
+            return int(resp.get("balance", 0))
+        except Exception as e:
+            # 查询失败时返回-1表示无法确定
+            return -1
+
+    # 辅助函数：等待prefund生效（简化版：只等待固定时间）
+    def wait_for_prefund_simple(timeout=10):
+        """等待prefund生效，最多等待timeout秒"""
+        time.sleep(min(timeout, 10))  # 最多等10秒
+
+    # 辅助函数：执行合约调用（先prefund再执行）
+    def call_contract(input_hex, prefund_amount=5_000_000):
+        # 发送prefund交易
+        tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=prefund_amount)
+        cli.wait_for_receipt(tx)
+        
+        # 等待prefund生效（简单等待）
+        wait_for_prefund_simple(3)
+        
+        # 执行合约调用
+        tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=input_hex)
+        return cli.wait_for_receipt(tx)
+
     # ==================== LOG Tests ====================
     print("\n[LOG Tests]")
 
     # LOG0
     inp = sel("emitLog0(uint256)") + eth_abi.encode(["uint256"], [42]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG0 success", rc and rc.get("status") == 0)
     assert_true("LOG0 has events", rc and len(rc.get("events", [])) > 0)
 
     # LOG1
     inp = sel("emitLog1(uint256,uint256)") + eth_abi.encode(["uint256", "uint256"], [1, 100]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG1 success", rc and rc.get("status") == 0)
     assert_true("LOG1 has events", rc and len(rc.get("events", [])) > 0)
 
     # LOG2
     inp = sel("emitLog2(uint256,uint256,uint256)") + eth_abi.encode(["uint256", "uint256", "uint256"], [1, 2, 200]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG2 success", rc and rc.get("status") == 0)
 
     # LOG3
     inp = sel("emitLog3(uint256,uint256,uint256,uint256)") + eth_abi.encode(["uint256"]*4, [1, 2, 3, 300]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("LOG3 success", rc and rc.get("status") == 0)
 
     # Transfer event (indexed address)
+    # 确保sender格式正确（移除可能存在的0x前缀，然后统一添加）
+    sender_addr = sender if sender.startswith("0x") else "0x" + sender
     inp = sel("emitTransfer(address,uint256)") + eth_abi.encode(
-        ["address", "uint256"], [to_checksum_address("0x" + sender), 1000]).hex()
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+        ["address", "uint256"], [to_checksum_address(sender_addr), 1000]).hex()
+    rc = call_contract(inp)
     assert_true("Transfer event success", rc and rc.get("status") == 0)
 
     # Multiple events
     inp = sel("emitMultiple()")
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=inp, prefund=5_000_000)
-    rc = cli.wait_for_receipt(tx)
+    rc = call_contract(inp)
     assert_true("multiple events success", rc and rc.get("status") == 0)
     event_count = len(rc.get("events", [])) if rc else 0
     assert_eq("3 events emitted", event_count, 3)

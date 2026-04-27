@@ -2,7 +2,7 @@
 Run all Seth chain tests.
 Usage:
   python tests/run_all.py                          # offline tests only
-  SETH_HOST=35.197.170.240 python tests/run_all.py # all tests including on-chain
+  SETH_HOST=127.0.0.1 python tests/run_all.py # all tests including on-chain
 """
 import subprocess, sys, os, time
 

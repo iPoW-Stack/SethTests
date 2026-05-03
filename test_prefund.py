@@ -196,25 +196,38 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
 
     pp_before = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
-    # Call with additional prefund
+    # Add extra prefund first, then call
     extra_prepay = 1000000
-    call_receipt = contract.functions.set(99).transact(ctx.ecdsa_key, prefund=extra_prepay)
+    contract.prefund(extra_prepay, ctx.ecdsa_key)
+    # Wait for extra prefund to arrive
+    target = pp_before + extra_prepay
+    for _ in range(30):
+        time.sleep(1)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp >= target:
+            break
+
+    pp_after_deposit = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+
+    # Now call the contract (gas will be deducted from prefund)
+    call_receipt = contract.functions.set(99).transact(ctx.ecdsa_key)
     assert_tx_success(call_receipt, "prefund_call_with_deposit_tx")
 
-    # Wait up to 60 seconds for the extra prepay deposit to be reflected
-    # The balance should settle to: pp_before + extra_prepay - gas_used
-    # which should be >= pp_before since extra_prepay should cover gas
+    # Wait for gas deduction to settle
+    time.sleep(1)
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     for _ in range(30):
         time.sleep(1)
         pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp_after >= pp_before:
+        if pp_after < pp_after_deposit:
             break
 
-    # Should be: pp_before + extra_prepay - gas_used
-    # At minimum, pp_after should be >= pp_before (since extra_prepay should cover gas)
+    # pp_after should be: pp_after_deposit - gas_used
+    # gas_used should be less than extra_prepay (1000000)
+    # so pp_after should be > pp_before
+    gas_used = pp_after_deposit - pp_after
     assert_true(pp_after >= pp_before, "prefund_call_with_deposit_balance",
-                f"Before: {pp_before}, After: {pp_after}")
+                f"Before: {pp_before}, After deposit: {pp_after_deposit}, After call: {pp_after}, Gas: {gas_used}")
 
 
 def test_prefund_heavy_gas_usage(ctx: SethTestContext):

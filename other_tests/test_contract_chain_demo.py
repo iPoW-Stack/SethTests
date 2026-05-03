@@ -699,9 +699,14 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
 
 
 if __name__ == "__main__":
-    IP, PORT, KEY = "127.0.0.1", 23001, "7c5b4ec643cfe561eba395569a41c04697920688e2daa4535e30969ffc8a4f66"
-    w3 = SethWeb3Mock(IP, PORT)
-    MY = w3.client.get_address(KEY)
+    import os, argparse
+    parser = argparse.ArgumentParser(description="Contract Chain Demo")
+    parser.add_argument("--host", default=os.environ.get("SETH_HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("SETH_PORT", "23001")))
+    parser.add_argument("--key", default=os.environ.get("DEPLOYER_PK", "7c5b4ec643cfe561eba395569a41c04697920688e2daa4535e30969ffc8a4f66"))
+    args = parser.parse_args()
+    w3 = SethWeb3Mock(args.host, args.port)
+    MY = w3.client.get_address(args.key)
     
     # Run the test
-    test_contract_chain_same_shard_pool(w3, MY, KEY)
+    test_contract_chain_same_shard_pool(w3, MY, args.key)

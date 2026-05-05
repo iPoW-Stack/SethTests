@@ -242,31 +242,37 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     while count < 30:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp >= + initial_pp + 20000000:
+        if pp >= initial_pp + 20000000:
             break
-
         count += 1
 
-    assert_tx_success(
-        ctx.client.wait_for_receipt(
-            ctx.client.send_transaction_auto(
-                ctx.ecdsa_key, addr, 7, prefund=20000000
-            )
-        ), "prefund_heavy_deposit"
-    )
+    # Second deposit
+    contract.prefund(20000000, ctx.ecdsa_key)
+    count = 0
+    while count < 30:
+        time.sleep(1)
+        pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
+        if pp >= initial_pp + 40000000:
+            break
+        count += 1
 
+    assert_true(pp >= initial_pp + 40000000, "prefund_heavy_deposit",
+                f"Expected >= {initial_pp + 40000000}, got {pp}")
+
+    # Now all prefund is settled, record the baseline
     pp_before = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
 
-    # Heavy computation
-    receipt = contract.functions.compute(100).transact(ctx.ecdsa_key, prefund=0)
+    # Heavy computation (no additional prefund)
+    receipt = contract.functions.compute(100).transact(ctx.ecdsa_key)
     assert_tx_success(receipt, "prefund_heavy_compute")
+
+    # Wait for gas deduction
     count = 0
     while count < 30:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp < pp_before:
             break
-
         count += 1
 
     pp_after = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)

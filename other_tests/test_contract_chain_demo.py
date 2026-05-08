@@ -296,10 +296,10 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
                 if balance >= initial_balance:
                     elapsed = time.time() - start_time
                     print(f"  ✅ Address is active! (took {elapsed:.1f}s)")
-                    
-                    # Query actual shard/pool from blockchain
-                    actual_info = query_address_info(w3, address, max_wait=30)
-                    
+
+                    # Query actual shard/pool from blockchain — allow more time here
+                    actual_info = query_address_info(w3, address, max_wait=60)
+
                     if actual_info:
                         print(f"  📊 Blockchain Info:")
                         print(f"     Address: {address}")
@@ -307,8 +307,8 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
                         print(f"     Balance: {actual_info['balance']}")
                         return private_key, address, actual_info
                     else:
-                        print(f"  ⚠️  Could not query shard/pool info")
-                        return private_key, address, None
+                        # Do not return early — keep waiting until overall max_wait
+                        print(f"  ⚠️  Could not query shard/pool info yet, will continue waiting...")
                 
                 # Address exists but balance not yet updated
                 if balance > 0:

@@ -686,7 +686,11 @@ class SethClient:
 
     def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         my_addr = self.get_address(pk_hex)
-        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
+        # Composite nonce address for contract-execute/refund uses contract+sender
+        # (prefund ID = contract_addr + user_addr elsewhere in code). Keep the
+        # original ordering so server lookups succeed.
+        to_clean = to.lower().replace('0x', '') if isinstance(to, str) else to
+        nonce_addr = to_clean + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
             nonce = int(r.get("nonce", 0)) + 1
@@ -699,7 +703,7 @@ class SethClient:
             msg = bytearray()
             msg.extend(struct.pack('<Q', _nonce))
             msg.extend(bytes.fromhex(pub))
-            msg.extend(bytes.fromhex(to.replace('0x','')))
+            msg.extend(bytes.fromhex(to_clean))
             msg.extend(struct.pack('<Q', amount))
             msg.extend(struct.pack('<Q', 5000000))
             msg.extend(struct.pack('<Q', 1))
@@ -709,7 +713,7 @@ class SethClient:
             if prefund > 0: msg.extend(struct.pack('<Q', prefund))
             _txh = keccak.new(digest_bits=256).update(msg).digest()
             _sig = sk.sign_digest_deterministic(_txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-            _data = {"nonce": str(_nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": _sig[:32].hex(), "sign_s": _sig[32:64].hex(), "sign_v": "0"}
+            _data = {"nonce": str(_nonce), "pubkey": pub, "to": to_clean, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": _sig[:32].hex(), "sign_s": _sig[32:64].hex(), "sign_v": "0"}
             if contract_code: _data["bytes_code"] = contract_code
             if input_hex: _data["input"] = input_hex
             if prefund: _data["prefund"] = str(prefund)
@@ -851,7 +855,10 @@ class SethClient:
         # oqs_pk_hex = signer_public_key.hex()
         # oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
-        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
+        # Normalize 'to' to hex without 0x prefix
+        to_clean = to.lower().replace('0x', '') if isinstance(to, str) else to
+        # For OQS transactions use contract+sender ordering (prefund composite)
+        nonce_addr = to_clean + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         
         # 1. Get Nonce
         try:
@@ -865,7 +872,7 @@ class SethClient:
 
         pk_bytes = bytes.fromhex(oqs_pk_hex.replace('0x',''))
         msg.extend(pk_bytes)
-        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(bytes.fromhex(to_clean))
         msg.extend(struct.pack('<Q', amount))
         msg.extend(struct.pack('<Q', 5000000)) # gas_limit
         msg.extend(struct.pack('<Q', 1))       # gas_price
@@ -933,7 +940,7 @@ class SethClient:
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x',''),
-            "to": to.replace('0x',''),
+            "to": to_clean,
             "amount": str(amount),
             "gas_limit": "5000000",
             "gas_price": "1",
@@ -996,7 +1003,9 @@ class SethClient:
         Send GmSSL transaction: build message -> SM3 digest -> SM2 sign -> send
         """
         my_addr = self.get_gmssl_address(pub_key_hex)
-        nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
+        to_clean = to.lower().replace('0x', '') if isinstance(to, str) else to
+        # For GMSSL transactions use contract+sender ordering as well
+        nonce_addr = to_clean + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
         
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
@@ -1007,7 +1016,7 @@ class SethClient:
         msg.extend(struct.pack('<Q', nonce))
 
         msg.extend(bytes.fromhex(pub_key_hex.replace('0x','')))
-        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(bytes.fromhex(to_clean))
         msg.extend(struct.pack('<Q', amount))
         msg.extend(struct.pack('<Q', 5000000)) # gas_limit
         msg.extend(struct.pack('<Q', 1))       # gas_price
@@ -1039,7 +1048,7 @@ class SethClient:
         data = {
             "nonce": str(nonce),
             "pubkey": pub_key_hex.replace('0x',''),
-            "to": to.replace('0x',''),
+            "to": to_clean,
             "amount": str(amount),
             "gas_limit": "5000000",
             "gas_price": "1",

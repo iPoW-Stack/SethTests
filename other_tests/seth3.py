@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import os
 import secrets
 import time
 from eth_utils import to_checksum_address
@@ -1333,7 +1334,8 @@ def test_gmssl_contract_flow(w3, GM_KEY):
         print(f"❌ Call Failed: {receipt.get('msg')}")
 
 def gmssl_sign_test():
-    IP, PORT = "127.0.0.1", 23001
+    IP = os.environ.get("SETH_HOST", "127.0.0.1")
+    PORT = int(os.environ.get("SETH_PORT", "23001"))
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     test_transfer(
@@ -2830,7 +2832,9 @@ def test_eth_signing(w3, MY, KEY):
 
     
 def ecdsa_sign_test():
-    IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    IP = os.environ.get("SETH_HOST", "127.0.0.1")
+    PORT = int(os.environ.get("SETH_PORT", "23001"))
+    KEY = os.environ.get("DEPLOYER_PK", "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
@@ -2852,7 +2856,8 @@ def ecdsa_sign_test():
 
 def oqs_sign_test():
     # Base configuration
-    IP, PORT = "127.0.0.1", 23001
+    IP = os.environ.get("SETH_HOST", "127.0.0.1")
+    PORT = int(os.environ.get("SETH_PORT", "23001"))
 
     # OQS keys (using sample ML-DSA-44 length Hex string here, should actually read from oqs_addrs file)
     # Note: Private key length must be > 128 bits to trigger auto-switch logic in code
@@ -3229,8 +3234,8 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("  WebSocket txhash Subscription Demo")
     print("=" * 60)
 
-    IP, HTTP_PORT = ws_ip, 23001
-    KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    IP, HTTP_PORT = ws_ip, int(os.environ.get("SETH_PORT", "23001"))
+    KEY = os.environ.get("DEPLOYER_PK", "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     DEST = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
 
     w3 = SethWeb3Mock(IP, HTTP_PORT)
@@ -3380,7 +3385,10 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
     
 if __name__ == "__main__":
-    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
+    import os
+    _host = os.environ.get("SETH_HOST", "127.0.0.1")
+    _ws_port = int(os.environ.get("SETH_WS_PORT", "33001"))
+    demo_ws_subscribe(_host, _ws_port)
     ecdsa_sign_test()
     oqs_sign_test()
     gmssl_sign_test()

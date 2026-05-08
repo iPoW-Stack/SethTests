@@ -30,6 +30,7 @@ OTHER_TESTS = [
 
 def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int, env: dict):
     """Run a test script from other_tests/ as subprocess."""
+    import config
     path = os.path.join(SCRIPT_DIR, rel_path)
     if not os.path.exists(path):
         results.record_skip(f"other_{label}", "file not found")
@@ -41,9 +42,9 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
             cmd = [sys.executable, path] + extra_args
         else:
             cmd = [sys.executable, path,
-                   "--host", str(SETH_HOST),
-                   "--port", str(SETH_PORT),
-                   "--key", TEST_ECDSA_KEY] + extra_args
+                   "--host", str(config.SETH_HOST),
+                   "--port", str(config.SETH_PORT),
+                   "--key", config.TEST_ECDSA_KEY] + extra_args
 
         r = subprocess.run(
             cmd,
@@ -116,10 +117,12 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
 
 def run_all(ctx: SethTestContext):
     print_section("Other Tests (subprocess)")
+    # Import config directly to get the latest values (may be modified by seth_test_runner)
+    import config
     env = os.environ.copy()
-    env["SETH_HOST"] = str(SETH_HOST)
-    env["SETH_PORT"] = str(SETH_PORT)
-    env["DEPLOYER_PK"] = TEST_ECDSA_KEY
+    env["SETH_HOST"] = str(config.SETH_HOST)
+    env["SETH_PORT"] = str(config.SETH_PORT)
+    env["DEPLOYER_PK"] = config.TEST_ECDSA_KEY
     # Ensure other_tests/ can find seth_sdk.py
     other_dir = os.path.join(SCRIPT_DIR, "other_tests")
     env["PYTHONPATH"] = other_dir + os.pathsep + env.get("PYTHONPATH", "")

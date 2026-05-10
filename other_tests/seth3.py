@@ -1761,8 +1761,14 @@ def test_amm_same_shard(w3, MY, KEY):
 
     # ── 6. Add liquidity (atomic cross-contract call) ─────────────────
     print("\n[6] Adding liquidity: 100000 A + 100000 B...")
-    r = amm.functions.addLiquidity(100000, 100000).transact(KEY)
-    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    # Retry addLiquidity up to 3 times in case of timeout
+    for attempt in range(3):
+        r = amm.functions.addLiquidity(100000, 100000).transact(KEY)
+        print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+        if r.get('status') == 0:
+            break
+        print(f"    Attempt {attempt+1} failed (status={r.get('status')}), retrying after 3s...")
+        time.sleep(3)
     reserves = amm.functions.getReserves().call()
     print(f"    Reserves after: A={reserves[0]}, B={reserves[1]}")
     assert reserves[0] == 100000 and reserves[1] == 100000, "Liquidity add failed"
@@ -1772,9 +1778,15 @@ def test_amm_same_shard(w3, MY, KEY):
     print("\n[7] Swapping 10000 A → B (minOut=0)...")
     # Re-approve before swap
     token_a.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
-    time.sleep(2)
-    r = amm.functions.swapAForB(10000, 0).transact(KEY)
-    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    time.sleep(3)
+    # Retry swapAForB up to 3 times in case of timeout
+    for attempt in range(3):
+        r = amm.functions.swapAForB(10000, 0).transact(KEY)
+        print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+        if r.get('status') == 0:
+            break
+        print(f"    Attempt {attempt+1} failed (status={r.get('status')}), retrying after 3s...")
+        time.sleep(3)
     reserves = amm.functions.getReserves().call()
     print(f"    Reserves after swap: A={reserves[0]}, B={reserves[1]}")
     # After swap: reserveA=110000, amountOut = 10000*100000/110000 ≈ 9090

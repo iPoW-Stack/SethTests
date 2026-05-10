@@ -90,15 +90,14 @@ def test_prefund_basic_deposit(ctx: SethTestContext):
     assert_tx_success(receipt, "prefund_deposit_tx")
 
     count = 0
-    while count < 10:
+    while count < 30:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp > initial_pp:
+        if pp >= initial_pp + deposit_amount:
             break
-
         count += 1
 
-    # Verify accumulation
+    # Verify accumulation (relative to initial balance)
     after_pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     assert_equal(after_pp, initial_pp + deposit_amount, "prefund_deposit_accumulated")
 

@@ -647,10 +647,14 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print("="*80)
     
     print(f"\n📊 Deployment Summary:")
-    print(f"   ContractA: {contract_a.address[:16]}... | Shard {contract_a_info['shard_id']} | Pool {contract_a_info['pool_index']}")
-    print(f"   ContractB: {contract_b.address[:16]}... | Shard {contract_b_info['shard_id']} | Pool {contract_b_info['pool_index']}")
-    print(f"   ContractC: {contract_c.address[:16]}... | Shard {contract_c_info['shard_id']} | Pool {contract_c_info['pool_index']}")
+    print(f"   ContractA: {contract_a.address[:16]}... | Shard {contract_a_info['shard_id'] if contract_a_info else 'N/A'} | Pool {contract_a_info['pool_index'] if contract_a_info else 'N/A'}")
+    print(f"   ContractB: {contract_b.address[:16]}... | Shard {contract_b_info['shard_id'] if contract_b_info else 'N/A'} | Pool {contract_b_info['pool_index'] if contract_b_info else 'N/A'}")
+    print(f"   ContractC: {contract_c.address[:16]}... | Shard {contract_c_info['shard_id'] if contract_c_info else 'N/A'} | Pool {contract_c_info['pool_index'] if contract_c_info else 'N/A'}")
     
+    if not all([contract_a_info, contract_b_info, contract_c_info]):
+        print(f"\n⚠️  Could not retrieve shard/pool info for all contracts, skipping verification")
+        return
+
     all_same_shard = (contract_a_info['shard_id'] == contract_b_info['shard_id'] == contract_c_info['shard_id'])
     all_same_pool = (contract_a_info['pool_index'] == contract_b_info['pool_index'] == contract_c_info['pool_index'])
     

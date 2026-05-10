@@ -1496,6 +1496,9 @@ def test_upgradeable_contract(w3, MY, KEY):
     proxy_as_v1 = w3.seth.contract(address=proxy_contract.address, abi=v1_abi)
 
     print("\n[4] inc() x2 via proxy (V1)...")
+    # Prefund the proxy contract before calling
+    proxy_as_v1.prefund(10_000_000, KEY)
+    import time; time.sleep(2)
     for i in range(1, 3):
         r = proxy_as_v1.functions.inc().transact(KEY)
         print(f"    inc() #{i} status={r.get('status')} events={r.get('decoded_events')}")
@@ -1741,14 +1744,23 @@ def test_amm_same_shard(w3, MY, KEY):
     print(f"    AMMPool @ {amm.address}")
     print(f"    All 3 contracts deployed by {MY} → same shard & pool ✅")
 
-    # ── 4. Approve AMMPool to spend tokens ────────────────────────────
-    print("\n[4] Approving AMMPool to spend TokenA & TokenB...")
+    # ── 4. Prefund all contracts ──────────────────────────────────────
+    print("\n[4] Prefunding all contracts...")
+    token_a.prefund(10_000_000, KEY)
+    token_b.prefund(10_000_000, KEY)
+    amm.prefund(10_000_000, KEY)
+    import time; time.sleep(3)
+    print("    Prefunded ✅")
+
+    # ── 5. Approve AMMPool to spend tokens ────────────────────────────
+    print("\n[5] Approving AMMPool to spend TokenA & TokenB...")
     token_a.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
     token_b.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    time.sleep(2)
     print("    Approved 500000 each ✅")
 
-    # ── 5. Add liquidity (atomic cross-contract call) ─────────────────
-    print("\n[5] Adding liquidity: 100000 A + 100000 B...")
+    # ── 6. Add liquidity (atomic cross-contract call) ─────────────────
+    print("\n[6] Adding liquidity: 100000 A + 100000 B...")
     r = amm.functions.addLiquidity(100000, 100000).transact(KEY)
     print(f"    status={r.get('status')} events={r.get('decoded_events')}")
     reserves = amm.functions.getReserves().call()
@@ -1756,8 +1768,11 @@ def test_amm_same_shard(w3, MY, KEY):
     assert reserves[0] == 100000 and reserves[1] == 100000, "Liquidity add failed"
     print("    ✅ Liquidity added atomically")
 
-    # ── 6. Swap A→B (atomic: transferFrom + transfer in one tx) ───────
-    print("\n[6] Swapping 10000 A → B (minOut=0)...")
+    # ── 7. Swap A→B (atomic: transferFrom + transfer in one tx) ───────
+    print("\n[7] Swapping 10000 A → B (minOut=0)...")
+    # Re-approve before swap
+    token_a.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    time.sleep(2)
     r = amm.functions.swapAForB(10000, 0).transact(KEY)
     print(f"    status={r.get('status')} events={r.get('decoded_events')}")
     reserves = amm.functions.getReserves().call()
@@ -1767,8 +1782,8 @@ def test_amm_same_shard(w3, MY, KEY):
     expected_b = 100000 - (10000 * 100000) // 110000
     print(f"    ✅ Swap executed atomically, reserveB={reserves[1]}")
 
-    # ── 7. Remove liquidity ───────────────────────────────────────────
-    print("\n[7] Removing all liquidity...")
+    # ── 8. Remove liquidity ───────────────────────────────────────────
+    print("\n[8] Removing all liquidity...")
     lp = amm.functions.liquidity(to_checksum_address("0x" + MY)).call()[0]
     print(f"    LP tokens: {lp}")
     if lp > 0:
@@ -1778,8 +1793,8 @@ def test_amm_same_shard(w3, MY, KEY):
         print(f"    Reserves after remove: A={reserves[0]}, B={reserves[1]}")
         print("    ✅ Liquidity removed")
 
-    # ── 8. Verify final token balances ────────────────────────────────
-    print("\n[8] Final balances:")
+    # ── 9. Verify final token balances ────────────────────────────────
+    print("\n[9] Final balances:")
     bal_a = token_a.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
     bal_b = token_b.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
     print(f"    TokenA: {bal_a}")

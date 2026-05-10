@@ -154,6 +154,12 @@ def test_value_transfer_to_contract(ctx: SethTestContext):
     """Test sending value to a contract with receive() function."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
     time.sleep(1)
+    # Fund the contract first so it can receive value
+    fund_receipt = ctx.w3.seth.send_transaction(
+        {'to': contract.address, 'value': 5_000_000}, ctx.ecdsa_key
+    )
+    assert_tx_success(fund_receipt, "value_transfer_fund_contract")
+    time.sleep(1)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=500000)
     assert_tx_success(receipt, "value_transfer_deposit_tx")
     events = receipt.get('decoded_events', [])
@@ -174,6 +180,12 @@ def test_multiple_transfers_sequential(ctx: SethTestContext):
 def test_contract_call_with_value(ctx: SethTestContext):
     """Test contract call that includes value transfer."""
     contract = deploy_contract_with_prefund(ctx, RECEIVER_SOL, "ValueReceiver")
+    time.sleep(1)
+    # First fund the contract with native tokens so it can receive value
+    fund_receipt = ctx.w3.seth.send_transaction(
+        {'to': contract.address, 'value': 5_000_000}, ctx.ecdsa_key
+    )
+    assert_tx_success(fund_receipt, "call_with_value_fund_contract")
     time.sleep(1)
     receipt = contract.functions.deposit().transact(ctx.ecdsa_key, value=1000000)
     assert_tx_success(receipt, "call_with_value_tx")

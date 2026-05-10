@@ -99,7 +99,10 @@ def test_cross_contract_call(ctx):
     from eth_utils import to_checksum_address
     callee = deploy_contract_with_prefund(ctx, CALLEE_SOL, "Callee")
     caller = deploy_contract_with_prefund(ctx, CALLER_SOL, "Caller")
-    caller.functions.callSetValue(to_checksum_address(callee.address), 12345).transact(ctx.ecdsa_key)
+    time.sleep(2)  # Wait for prefund to settle
+    receipt = caller.functions.callSetValue(to_checksum_address(callee.address), 12345).transact(ctx.ecdsa_key)
+    assert_tx_success(receipt, "cross_call_tx")
+    time.sleep(1)
     assert_equal(callee.functions.getValue().call(), 12345, "cross_call_value")
 
 def test_delegatecall(ctx):

@@ -21,6 +21,75 @@ def _deps_satisfied() -> bool:
     return True
 
 
+def _venv_interpreter(venv_dir: str) -> str:
+    if sys.platform == "win32":
+        bindir = os.path.join(venv_dir, "Scripts")
+        cand = os.path.join(bindir, "python.exe")
+    else:
+        bindir = os.path.join(venv_dir, "bin")
+        cand = os.path.join(bindir, "python3")
+        if not os.path.isfile(cand):
+            cand = os.path.join(bindir, "python")
+    return cand
+
+
+def _pip_module_ok(venv_python: str, subprocess_module) -> bool:
+    r = subprocess_module.run(
+        [venv_python, "-m", "pip", "--version"],
+        cwd=_REPO_ROOT,
+        stdout=subprocess_module.DEVNULL,
+        stderr=subprocess_module.DEVNULL,
+    )
+    return r.returncode == 0
+
+
+def _ensure_venv_pip(venv_python: str, subprocess_module) -> None:
+    """Some Python builds create a venv without bin/pip; install pip via ensurepip or get-pip."""
+    if _pip_module_ok(venv_python, subprocess_module):
+        return
+    subprocess_module.run(
+        [venv_python, "-m", "ensurepip", "--upgrade"],
+        cwd=_REPO_ROOT,
+    )
+    if _pip_module_ok(venv_python, subprocess_module):
+        return
+    get_pip_path = os.path.join(_REPO_ROOT, ".get-pip.py")
+    print("SethTests: venv has no pip; downloading get-pip.py ...", flush=True)
+    try:
+        import ssl
+        import urllib.request
+
+        req = urllib.request.Request(
+            "https://bootstrap.pypa.io/get-pip.py",
+            headers={"User-Agent": "SethTests-bootstrap"},
+        )
+        ctx = ssl.create_default_context()
+        with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+            with open(get_pip_path, "wb") as out:
+                out.write(resp.read())
+    except Exception as exc:
+        print(
+            "SethTests: could not install pip into .venv (ensurepip missing and get-pip failed).\n"
+            f"Reason: {exc}\n"
+            "Fix: use a Python with ensurepip, or run: curl -sS https://bootstrap.pypa.io/get-pip.py | "
+            f"{venv_python} -",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    try:
+        r = subprocess_module.run([venv_python, get_pip_path], cwd=_REPO_ROOT)
+        if r.returncode != 0:
+            sys.exit(r.returncode)
+    finally:
+        try:
+            os.remove(get_pip_path)
+        except OSError:
+            pass
+    if not _pip_module_ok(venv_python, subprocess_module):
+        print("SethTests: pip still unavailable after get-pip.py.", file=sys.stderr)
+        sys.exit(1)
+
+
 def _maybe_bootstrap_venv() -> None:
     if __name__ != "__main__":
         return
@@ -32,16 +101,6 @@ def _maybe_bootstrap_venv() -> None:
 
     venv_dir = os.path.join(_REPO_ROOT, ".venv")
     req_file = os.path.join(_REPO_ROOT, "requirements.txt")
-    if sys.platform == "win32":
-        bindir = os.path.join(venv_dir, "Scripts")
-        venv_python = os.path.join(bindir, "python.exe")
-        pip_exe = os.path.join(bindir, "pip.exe")
-    else:
-        bindir = os.path.join(venv_dir, "bin")
-        venv_python = os.path.join(bindir, "python3")
-        if not os.path.isfile(venv_python):
-            venv_python = os.path.join(bindir, "python")
-        pip_exe = os.path.join(bindir, "pip")
 
     real_exe = os.path.realpath(sys.executable)
     real_venv = os.path.realpath(venv_dir) + os.sep
@@ -64,9 +123,18 @@ def _maybe_bootstrap_venv() -> None:
         )
         if r.returncode != 0:
             sys.exit(r.returncode)
+
+    venv_python = _venv_interpreter(venv_dir)
+    if not os.path.isfile(venv_python):
+        print(f"SethTests: missing venv interpreter: {venv_python}", file=sys.stderr)
+        sys.exit(1)
+
+    _ensure_venv_pip(venv_python, subprocess)
+
+    pip_inv = [venv_python, "-m", "pip"]
     for cmd in (
-        [pip_exe, "install", "-q", "-U", "pip", "setuptools", "wheel"],
-        [pip_exe, "install", "-q", "-r", req_file],
+        pip_inv + ["install", "-q", "-U", "pip", "setuptools", "wheel"],
+        pip_inv + ["install", "-q", "-r", req_file],
     ):
         r = subprocess.run(cmd, cwd=_REPO_ROOT)
         if r.returncode != 0:

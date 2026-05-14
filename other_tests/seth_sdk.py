@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import secrets
 import struct
 import requests
@@ -18,6 +19,9 @@ from eth_utils import to_checksum_address
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
+
+# solc version used for compile_source(..., evm_version='shanghai')
+_SOLC_PREPARED_VERSION: Optional[str] = None
 
 # GMSSL Support
 try:
@@ -261,12 +265,34 @@ def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     input_data = bytes.fromhex("ff") + bytes.fromhex(sender) + salt_bytes + code_hash
     return keccak.new(digest_bits=256).update(input_data).digest()[-20:].hex().lower()
 
+def _ensure_solc_for_compile() -> str:
+    """Install and select solc once per process (py-solc-x); raises if install is impossible."""
+    global _SOLC_PREPARED_VERSION
+    version = os.environ.get("SETH_SOLC_VERSION", "0.8.30")
+    if _SOLC_PREPARED_VERSION == version:
+        return version
+    verbose = os.environ.get("SETH_SOLC_VERBOSE") == "1"
+    try:
+        kwargs = {"show_progress": verbose} if verbose else {}
+        solcx.install_solc(version, **kwargs)
+    except TypeError:
+        # Older py-solc-x without show_progress
+        solcx.install_solc(version)
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not install the Solidity compiler (solc) required for contract tests.\n"
+            f"Requested version: {version}. Error: {exc}\n"
+            "Allow HTTPS access for py-solc-x (GitHub / solidity builds), or install solc on PATH "
+            "and set SETH_SOLC_VERSION to match."
+        ) from exc
+    solcx.set_solc_version(version)
+    _SOLC_PREPARED_VERSION = version
+    return version
+
+
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
-    try:
-        solcx.install_solc("0.8.30")
-        solcx.set_solc_version("0.8.30")
-    except: pass
+    _ensure_solc_for_compile()
 
     compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
     

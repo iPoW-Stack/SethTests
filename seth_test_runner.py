@@ -1,7 +1,83 @@
 # Seth Test Runner - Main entry point
 from __future__ import annotations
-import sys, os, argparse, time
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import os
+import sys
+
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _deps_satisfied() -> bool:
+    try:
+        import eth_abi  # noqa: F401
+        import requests  # noqa: F401
+        import solcx  # noqa: F401
+        from Crypto.Hash import keccak  # noqa: F401
+        import ecdsa  # noqa: F401
+        import eth_utils  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _maybe_bootstrap_venv() -> None:
+    if os.environ.get("SETH_TESTS_SKIP_AUTO_DEPS") == "1":
+        return
+    if _deps_satisfied():
+        return
+    import subprocess
+
+    venv_dir = os.path.join(_REPO_ROOT, ".venv")
+    req_file = os.path.join(_REPO_ROOT, "requirements.txt")
+    if sys.platform == "win32":
+        bindir = os.path.join(venv_dir, "Scripts")
+        venv_python = os.path.join(bindir, "python.exe")
+        pip_exe = os.path.join(bindir, "pip.exe")
+    else:
+        bindir = os.path.join(venv_dir, "bin")
+        venv_python = os.path.join(bindir, "python3")
+        if not os.path.isfile(venv_python):
+            venv_python = os.path.join(bindir, "python")
+        pip_exe = os.path.join(bindir, "pip")
+
+    real_exe = os.path.realpath(sys.executable)
+    real_venv = os.path.realpath(venv_dir) + os.sep
+    if real_exe.startswith(real_venv):
+        print(
+            "SethTests: dependencies missing inside .venv; install failed or requirements changed.\n"
+            "Try: rm -rf .venv && rerun, or pip install -r requirements.txt inside .venv",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not os.path.isfile(req_file):
+        print(f"SethTests: missing {req_file}", file=sys.stderr)
+        sys.exit(1)
+
+    print("SethTests: installing dependencies into .venv ...", flush=True)
+    if not os.path.isdir(venv_dir):
+        r = subprocess.run(
+            [sys.executable, "-m", "venv", venv_dir],
+            cwd=_REPO_ROOT,
+        )
+        if r.returncode != 0:
+            sys.exit(r.returncode)
+    for cmd in (
+        [pip_exe, "install", "-q", "-U", "pip", "setuptools", "wheel"],
+        [pip_exe, "install", "-q", "-r", req_file],
+    ):
+        r = subprocess.run(cmd, cwd=_REPO_ROOT)
+        if r.returncode != 0:
+            sys.exit(r.returncode)
+    script = os.path.abspath(__file__)
+    os.execv(venv_python, [venv_python, script, *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    _maybe_bootstrap_venv()
+
+import argparse
+import time
+
+sys.path.insert(0, _REPO_ROOT)
 from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
 from utils import SethTestContext, Color, print_section, results
 import test_core_evm, test_contracts, test_transactions, test_transaction_integration

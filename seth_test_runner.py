@@ -1,7 +1,9 @@
 # Seth Test Runner - Main entry point
 from __future__ import annotations
+import argparse
 import os
 import sys
+import time
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,6 +22,8 @@ def _deps_satisfied() -> bool:
 
 
 def _maybe_bootstrap_venv() -> None:
+    if __name__ != "__main__":
+        return
     if os.environ.get("SETH_TESTS_SKIP_AUTO_DEPS") == "1":
         return
     if _deps_satisfied():
@@ -71,34 +75,45 @@ def _maybe_bootstrap_venv() -> None:
     os.execv(venv_python, [venv_python, script, *sys.argv[1:]])
 
 
-if __name__ == "__main__":
-    _maybe_bootstrap_venv()
+def _load_heavy_modules() -> None:
+    """Import test stack only after optional venv bootstrap (needs third-party deps)."""
+    global MODULE_MAP, SethTestContext, Color, print_section, results
+    global test_core_evm, test_contracts, test_transactions, test_transaction_integration
+    global test_blockchain, test_prefund, test_oqs, test_basic, test_genesis
+    global test_vm_opcodes, test_onchain, test_other
 
-import argparse
-import time
+    sys.path.insert(0, _REPO_ROOT)
+    from utils import SethTestContext, Color, print_section, results
+    import test_core_evm
+    import test_contracts
+    import test_transactions
+    import test_transaction_integration
+    import test_blockchain
+    import test_prefund
+    import test_oqs
+    import test_basic
+    import test_genesis
+    import test_vm_opcodes
+    import test_onchain
+    import test_other
 
-sys.path.insert(0, _REPO_ROOT)
-from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
-from utils import SethTestContext, Color, print_section, results
-import test_core_evm, test_contracts, test_transactions, test_transaction_integration
-import test_blockchain, test_prefund, test_oqs
-import test_basic, test_genesis, test_vm_opcodes, test_onchain
-import test_other
+    MODULE_MAP = {
+        "core": test_core_evm,
+        "contracts": test_contracts,
+        "transactions": test_transactions,
+        "txint": test_transaction_integration,
+        "blockchain": test_blockchain,
+        "prefund": test_prefund,
+        "oqs": test_oqs,
+        "basic": test_basic,
+        "genesis": test_genesis,
+        "vm": test_vm_opcodes,
+        "onchain": test_onchain,
+        "other": test_other,
+    }
 
-MODULE_MAP = {
-    "core": test_core_evm,
-    "contracts": test_contracts,
-    "transactions": test_transactions,
-    "txint": test_transaction_integration,
-    "blockchain": test_blockchain,
-    "prefund": test_prefund,
-    "oqs": test_oqs,
-    "basic": test_basic,
-    "genesis": test_genesis,
-    "vm": test_vm_opcodes,
-    "onchain": test_onchain,
-    "other": test_other,
-}
+
+MODULE_MAP = {}  # filled by _load_heavy_modules()
 
 def parse_args():
     p = argparse.ArgumentParser(description="Seth EVM Compatibility Test Suite")
@@ -153,6 +168,8 @@ def list_tests():
         print()
 
 def main():
+    _maybe_bootstrap_venv()
+    _load_heavy_modules()
     args = parse_args()
     if args.host:
         import config

@@ -15,11 +15,10 @@ Requires: SETH_HOST env var
 """
 import sys, os, secrets
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "clipy"))
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, _REPO_ROOT)
 
 import eth_abi
-import solcx
-from solcx import compile_source, install_solc
 from Crypto.Hash import keccak
 
 passed = 0
@@ -114,20 +113,13 @@ def main():
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
-    from seth_sdk import SethClient, StepType
+    from seth_sdk import SethClient, StepType, compile_source_auto
     cli = SethClient(host, port)
     sender = cli.get_address(pk)
 
     # Compile
     print("\n[Compile]")
-    try:
-        install_solc("0.8.20")
-    except Exception as e:
-        print(f"  Warning: Could not download solc (network issue?): {e}")
-        print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.20")
-    comp = compile_source(CREATE2_FACTORY_SOL, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+    comp = compile_source_auto(CREATE2_FACTORY_SOL, output_values=["abi", "bin"], optimize=True, optimize_runs=200,
                            evm_version="paris")
     factory_contract = next(v for k, v in comp.items() if "Create2Factory" in k)
     factory_bin = factory_contract["bin"].replace("0x", "").strip()

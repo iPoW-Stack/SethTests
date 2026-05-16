@@ -30,6 +30,17 @@ ONCHAIN_TESTS = [
 ]
 
 
+def _subprocess_env() -> dict:
+    env = os.environ.copy()
+    env["SETH_HOST"] = str(config.SETH_HOST)
+    env["SETH_PORT"] = str(config.SETH_PORT)
+    env["DEPLOYER_PK"] = config.TEST_ECDSA_KEY
+    existing = env.get("PYTHONPATH", "")
+    parts = [SCRIPT_DIR] + ([existing] if existing else [])
+    env["PYTHONPATH"] = os.pathsep.join(parts)
+    return env
+
+
 def _run_script(rel_path: str, label: str, env: dict):
     """Run a test script as subprocess, return (passed, failed) from output."""
     path = os.path.join(SCRIPT_DIR, rel_path)
@@ -84,11 +95,7 @@ def _run_script(rel_path: str, label: str, env: dict):
 
 def run_all(ctx: SethTestContext):
     print_section("On-chain State Tests (subprocess)")
-    env = os.environ.copy()
-    env["SETH_HOST"] = str(config.SETH_HOST)
-    env["SETH_PORT"] = str(config.SETH_PORT)
-    # Pass the test key so scripts that use DEPLOYER_PK can pick it up
-    env["DEPLOYER_PK"] = config.TEST_ECDSA_KEY
+    env = _subprocess_env()
 
     for rel_path, label in ONCHAIN_TESTS:
         _run_script(rel_path, label, env)

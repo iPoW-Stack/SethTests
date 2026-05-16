@@ -1,6 +1,9 @@
 from __future__ import annotations
 import os
+import re
 import secrets
+import shutil
+import subprocess
 import struct
 import requests
 import hashlib
@@ -21,6 +24,7 @@ from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
 _SOLC_PREPARED_VERSION: Optional[str] = None
+_SOLC_BINARY_OVERRIDE: Optional[str] = None
 
 # GMSSL Support
 try:
@@ -272,6 +276,47 @@ def _solc_is_installed(version: str) -> bool:
     return version in installed
 
 
+def _find_system_solc() -> Optional[str]:
+    env_bin = os.environ.get("SETH_SOLC_BINARY", "").strip()
+    if env_bin and os.path.isfile(env_bin):
+        return env_bin
+    return shutil.which("solc")
+
+
+def _version_from_solc_binary(path: str) -> Optional[str]:
+    try:
+        out = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        text = (out.stdout or "") + (out.stderr or "")
+        m = re.search(r"Version:\s*(\d+\.\d+\.\d+)", text)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
+def _use_system_solc(version: str) -> Optional[str]:
+    """Use solc from PATH when py-solc-x download is unavailable (offline containers)."""
+    global _SOLC_BINARY_OVERRIDE
+    path = _find_system_solc()
+    if not path:
+        return None
+    detected = _version_from_solc_binary(path)
+    if detected:
+        req_mm = ".".join(version.split(".")[:2])
+        det_mm = ".".join(detected.split(".")[:2])
+        if req_mm != det_mm:
+            return None
+    _SOLC_BINARY_OVERRIDE = path
+    return detected or version
+
+
 def _install_solc_version(version: str) -> None:
     verbose = os.environ.get("SETH_SOLC_VERBOSE") == "1"
     try:
@@ -289,39 +334,76 @@ def _install_solc_version(version: str) -> None:
         )
 
 
+def ensure_solc(version: Optional[str] = None) -> str:
+    """Prepare solc for compile_source / compile_and_link (download, cache, or system PATH)."""
+    global _SOLC_PREPARED_VERSION, _SOLC_BINARY_OVERRIDE
+    if version is not None:
+        os.environ["SETH_SOLC_VERSION"] = version
+        if _SOLC_PREPARED_VERSION != version:
+            _SOLC_PREPARED_VERSION = None
+            _SOLC_BINARY_OVERRIDE = None
+    return _ensure_solc_for_compile()
+
+
 def _ensure_solc_for_compile() -> str:
     """Install and select solc once per process (py-solc-x); raises if install is impossible."""
-    global _SOLC_PREPARED_VERSION
+    global _SOLC_PREPARED_VERSION, _SOLC_BINARY_OVERRIDE
     version = os.environ.get("SETH_SOLC_VERSION", "0.8.30")
-    if _SOLC_PREPARED_VERSION == version and _solc_is_installed(version):
+    if (
+        _SOLC_PREPARED_VERSION == version
+        and (_solc_is_installed(version) or _SOLC_BINARY_OVERRIDE)
+    ):
+        if _SOLC_BINARY_OVERRIDE:
+            return version
         solcx.set_solc_version(version)
         return version
+
+    _SOLC_BINARY_OVERRIDE = None
     if not _solc_is_installed(version):
         try:
             _install_solc_version(version)
         except Exception as exc:
-            raise RuntimeError(
-                "Could not install the Solidity compiler (solc) required for contract tests.\n"
-                f"Requested version: {version}. Error: {exc}\n"
-                "Allow HTTPS access for py-solc-x (GitHub / solidity builds), or install solc on PATH "
-                "and set SETH_SOLC_VERSION to match."
-            ) from exc
-    solcx.set_solc_version(version)
+            sys_ver = _use_system_solc(version)
+            if not sys_ver:
+                raise RuntimeError(
+                    "Could not install the Solidity compiler (solc) required for contract tests.\n"
+                    f"Requested version: {version}. Error: {exc}\n"
+                    "Offline fix: apt install solc OR set SETH_SOLC_BINARY=/path/to/solc "
+                    "and SETH_SOLC_VERSION to match `solc --version`."
+                ) from exc
+            _SOLC_PREPARED_VERSION = version
+            return sys_ver
+
+    if not _SOLC_BINARY_OVERRIDE:
+        solcx.set_solc_version(version)
     _SOLC_PREPARED_VERSION = version
     return version
+
+
+def compile_source_auto(source: str, **kwargs):
+    """compile_source with ensure_solc + optional system solc binary."""
+    version = _ensure_solc_for_compile()
+    if _SOLC_BINARY_OVERRIDE:
+        kwargs.setdefault("solc_binary", _SOLC_BINARY_OVERRIDE)
+    else:
+        kwargs.setdefault("solc_version", version)
+    return solcx.compile_source(source, **kwargs)
 
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
     version = _ensure_solc_for_compile()
-
-    compiled = solcx.compile_source(
-        source,
+    compile_kw: Dict[str, Any] = dict(
         output_values=['bin', 'abi'],
         optimize=True,
         evm_version='shanghai',
-        solc_version=version,
     )
+    if _SOLC_BINARY_OVERRIDE:
+        compile_kw["solc_binary"] = _SOLC_BINARY_OVERRIDE
+    else:
+        compile_kw["solc_version"] = version
+
+    compiled = solcx.compile_source(source, **compile_kw)
     
     # Flexible lookup to handle solc naming
     contract_data = None

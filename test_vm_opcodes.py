@@ -5,11 +5,9 @@ from __future__ import annotations
 import os, secrets, time
 
 import eth_abi
-import solcx
-from solcx import compile_source, install_solc
 from Crypto.Hash import keccak
 
-from seth_sdk import StepType
+from seth_sdk import StepType, compile_source_auto
 from utils import (
     SethTestContext, run_test, assert_equal, assert_true,
     print_section, results,
@@ -45,22 +43,20 @@ def test_vm_opcodes(ctx: SethTestContext):
     pk = ctx.ecdsa_key
     sender = ctx.ecdsa_addr
 
-    # Compile
-    try:
-        install_solc("0.8.20")
-    except Exception as e:
-        print(f"  Warning: Could not download solc (network issue?): {e}")
-        print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.20")
+    # Compile (uses py-solc-x download or system `solc` when offline)
     sol_path = os.path.join(SCRIPT_DIR, "VMTestContract.sol")
     if not os.path.exists(sol_path):
         results.record_skip("vm_opcodes", "VMTestContract.sol not found")
         return
     with open(sol_path, "r") as f:
         src = f.read()
-    comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200,
-                           evm_version="paris")
+    comp = compile_source_auto(
+        src,
+        output_values=["abi", "bin"],
+        optimize=True,
+        optimize_runs=200,
+        evm_version="paris",
+    )
     contract = next(v for k, v in comp.items() if "VMTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
 

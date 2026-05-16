@@ -17,11 +17,10 @@ Requires: SETH_HOST env var
 """
 import sys, os, secrets, time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "clipy"))
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, _REPO_ROOT)
 
 import eth_abi
-import solcx
-from solcx import compile_source, install_solc
 from Crypto.Hash import keccak
 from eth_utils import to_checksum_address
 
@@ -113,21 +112,14 @@ def main():
     port = int(os.getenv("SETH_PORT", "23001"))
     pk = os.getenv("DEPLOYER_PK", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
 
-    from seth_sdk import SethClient, StepType
+    from seth_sdk import SethClient, StepType, compile_source_auto
     cli = SethClient(host, port)
     sender = cli.get_address(pk)
 
     print("\n[Compile & Deploy]")
-    try:
-        install_solc("0.8.20")
-    except Exception as e:
-        print(f"  Warning: Could not download solc (network issue?): {e}")
-        print("  Attempting to use existing solc installation...")
-    solcx.set_solc_version("0.8.20")
     with open(os.path.join(SCRIPT_DIR, "StaticDelegateTestContract.sol"), "r", encoding="utf-8") as f:
         src = f.read()
-    comp = compile_source(src, output_values=["abi", "bin"],
-                           solc_version="0.8.20", optimize=True, optimize_runs=200,
+    comp = compile_source_auto(src, output_values=["abi", "bin"], optimize=True, optimize_runs=200,
                            evm_version="paris")
     helper_bin = next(v for k, v in comp.items() if k.endswith(":Helper"))["bin"].replace("0x", "").strip()
     main_bin = next(v for k, v in comp.items() if k.endswith(":StaticDelegateTest"))["bin"].replace("0x", "").strip()

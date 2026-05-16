@@ -1,187 +1,28 @@
 # Seth Test Runner - Main entry point
 from __future__ import annotations
-import argparse
-import os
-import sys
-import time
+import sys, os, argparse, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
+from utils import SethTestContext, Color, print_section, results
+import test_core_evm, test_contracts, test_transactions, test_transaction_integration
+import test_blockchain, test_prefund, test_oqs
+import test_basic, test_genesis, test_vm_opcodes, test_onchain
+import test_other
 
-_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-
-
-def _deps_satisfied() -> bool:
-    try:
-        import eth_abi  # noqa: F401
-        import requests  # noqa: F401
-        import solcx  # noqa: F401
-        from Crypto.Hash import keccak  # noqa: F401
-        import ecdsa  # noqa: F401
-        import eth_utils  # noqa: F401
-    except ImportError:
-        return False
-    return True
-
-
-def _venv_interpreter(venv_dir: str) -> str:
-    if sys.platform == "win32":
-        bindir = os.path.join(venv_dir, "Scripts")
-        cand = os.path.join(bindir, "python.exe")
-    else:
-        bindir = os.path.join(venv_dir, "bin")
-        cand = os.path.join(bindir, "python3")
-        if not os.path.isfile(cand):
-            cand = os.path.join(bindir, "python")
-    return cand
-
-
-def _pip_module_ok(venv_python: str, subprocess_module) -> bool:
-    r = subprocess_module.run(
-        [venv_python, "-m", "pip", "--version"],
-        cwd=_REPO_ROOT,
-        stdout=subprocess_module.DEVNULL,
-        stderr=subprocess_module.DEVNULL,
-    )
-    return r.returncode == 0
-
-
-def _ensure_venv_pip(venv_python: str, subprocess_module) -> None:
-    """Some Python builds create a venv without bin/pip; install pip via ensurepip or get-pip."""
-    if _pip_module_ok(venv_python, subprocess_module):
-        return
-    subprocess_module.run(
-        [venv_python, "-m", "ensurepip", "--upgrade"],
-        cwd=_REPO_ROOT,
-    )
-    if _pip_module_ok(venv_python, subprocess_module):
-        return
-    get_pip_path = os.path.join(_REPO_ROOT, ".get-pip.py")
-    print("SethTests: venv has no pip; downloading get-pip.py ...", flush=True)
-    try:
-        import ssl
-        import urllib.request
-
-        req = urllib.request.Request(
-            "https://bootstrap.pypa.io/get-pip.py",
-            headers={"User-Agent": "SethTests-bootstrap"},
-        )
-        ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
-            with open(get_pip_path, "wb") as out:
-                out.write(resp.read())
-    except Exception as exc:
-        print(
-            "SethTests: could not install pip into .venv (ensurepip missing and get-pip failed).\n"
-            f"Reason: {exc}\n"
-            "Fix: use a Python with ensurepip, or run: curl -sS https://bootstrap.pypa.io/get-pip.py | "
-            f"{venv_python} -",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    try:
-        r = subprocess_module.run([venv_python, get_pip_path], cwd=_REPO_ROOT)
-        if r.returncode != 0:
-            sys.exit(r.returncode)
-    finally:
-        try:
-            os.remove(get_pip_path)
-        except OSError:
-            pass
-    if not _pip_module_ok(venv_python, subprocess_module):
-        print("SethTests: pip still unavailable after get-pip.py.", file=sys.stderr)
-        sys.exit(1)
-
-
-def _maybe_bootstrap_venv() -> None:
-    if __name__ != "__main__":
-        return
-    if os.environ.get("SETH_TESTS_SKIP_AUTO_DEPS") == "1":
-        return
-    if _deps_satisfied():
-        return
-    import subprocess
-
-    venv_dir = os.path.join(_REPO_ROOT, ".venv")
-    req_file = os.path.join(_REPO_ROOT, "requirements.txt")
-
-    real_exe = os.path.realpath(sys.executable)
-    real_venv = os.path.realpath(venv_dir) + os.sep
-    if real_exe.startswith(real_venv):
-        print(
-            "SethTests: dependencies missing inside .venv; install failed or requirements changed.\n"
-            "Try: rm -rf .venv && rerun, or pip install -r requirements.txt inside .venv",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    if not os.path.isfile(req_file):
-        print(f"SethTests: missing {req_file}", file=sys.stderr)
-        sys.exit(1)
-
-    print("SethTests: installing dependencies into .venv ...", flush=True)
-    if not os.path.isdir(venv_dir):
-        r = subprocess.run(
-            [sys.executable, "-m", "venv", venv_dir],
-            cwd=_REPO_ROOT,
-        )
-        if r.returncode != 0:
-            sys.exit(r.returncode)
-
-    venv_python = _venv_interpreter(venv_dir)
-    if not os.path.isfile(venv_python):
-        print(f"SethTests: missing venv interpreter: {venv_python}", file=sys.stderr)
-        sys.exit(1)
-
-    _ensure_venv_pip(venv_python, subprocess)
-
-    pip_inv = [venv_python, "-m", "pip"]
-    for cmd in (
-        pip_inv + ["install", "-q", "-U", "pip", "setuptools", "wheel"],
-        pip_inv + ["install", "-q", "-r", req_file],
-    ):
-        r = subprocess.run(cmd, cwd=_REPO_ROOT)
-        if r.returncode != 0:
-            sys.exit(r.returncode)
-    script = os.path.abspath(__file__)
-    os.execv(venv_python, [venv_python, script, *sys.argv[1:]])
-
-
-def _load_heavy_modules() -> None:
-    """Import test stack only after optional venv bootstrap (needs third-party deps)."""
-    global MODULE_MAP, SethTestContext, Color, print_section, results
-    global test_core_evm, test_contracts, test_transactions, test_transaction_integration
-    global test_blockchain, test_prefund, test_oqs, test_basic, test_genesis
-    global test_vm_opcodes, test_onchain, test_other
-
-    sys.path.insert(0, _REPO_ROOT)
-    from utils import SethTestContext, Color, print_section, results
-    import test_core_evm
-    import test_contracts
-    import test_transactions
-    import test_transaction_integration
-    import test_blockchain
-    import test_prefund
-    import test_oqs
-    import test_basic
-    import test_genesis
-    import test_vm_opcodes
-    import test_onchain
-    import test_other
-
-    MODULE_MAP = {
-        "core": test_core_evm,
-        "contracts": test_contracts,
-        "transactions": test_transactions,
-        "txint": test_transaction_integration,
-        "blockchain": test_blockchain,
-        "prefund": test_prefund,
-        "oqs": test_oqs,
-        "basic": test_basic,
-        "genesis": test_genesis,
-        "vm": test_vm_opcodes,
-        "onchain": test_onchain,
-        "other": test_other,
-    }
-
-
-MODULE_MAP = {}  # filled by _load_heavy_modules()
+MODULE_MAP = {
+    "core": test_core_evm,
+    "contracts": test_contracts,
+    "transactions": test_transactions,
+    "txint": test_transaction_integration,
+    "blockchain": test_blockchain,
+    "prefund": test_prefund,
+    "oqs": test_oqs,
+    "basic": test_basic,
+    "genesis": test_genesis,
+    "vm": test_vm_opcodes,
+    "onchain": test_onchain,
+    "other": test_other,
+}
 
 def parse_args():
     p = argparse.ArgumentParser(description="Seth EVM Compatibility Test Suite")
@@ -236,8 +77,6 @@ def list_tests():
         print()
 
 def main():
-    _maybe_bootstrap_venv()
-    _load_heavy_modules()
     args = parse_args()
     if args.host:
         import config

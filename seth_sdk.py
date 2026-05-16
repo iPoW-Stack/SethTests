@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import secrets
 import struct
 import requests
@@ -18,6 +19,8 @@ from eth_utils import to_checksum_address
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
+
+_SOLC_PREPARED_VERSION: Optional[str] = None
 
 # GMSSL Support
 try:
@@ -261,14 +264,64 @@ def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     input_data = bytes.fromhex("ff") + bytes.fromhex(sender) + salt_bytes + code_hash
     return keccak.new(digest_bits=256).update(input_data).digest()[-20:].hex().lower()
 
+def _solc_is_installed(version: str) -> bool:
+    try:
+        installed = {str(v) for v in solcx.get_installed_solc_versions()}
+    except Exception:
+        return False
+    return version in installed
+
+
+def _install_solc_version(version: str) -> None:
+    verbose = os.environ.get("SETH_SOLC_VERBOSE") == "1"
+    try:
+        kwargs = {"show_progress": verbose} if verbose else {}
+        solcx.install_solc(version, **kwargs)
+    except TypeError:
+        solcx.install_solc(version)
+    if not _solc_is_installed(version):
+        try:
+            have = ", ".join(str(v) for v in sorted(solcx.get_installed_solc_versions(), reverse=True)[:8])
+        except Exception:
+            have = "(none)"
+        raise RuntimeError(
+            f"solc {version} was not installed after install_solc() (have: {have})"
+        )
+
+
+def _ensure_solc_for_compile() -> str:
+    """Install and select solc once per process (py-solc-x); raises if install is impossible."""
+    global _SOLC_PREPARED_VERSION
+    version = os.environ.get("SETH_SOLC_VERSION", "0.8.30")
+    if _SOLC_PREPARED_VERSION == version and _solc_is_installed(version):
+        solcx.set_solc_version(version)
+        return version
+    if not _solc_is_installed(version):
+        try:
+            _install_solc_version(version)
+        except Exception as exc:
+            raise RuntimeError(
+                "Could not install the Solidity compiler (solc) required for contract tests.\n"
+                f"Requested version: {version}. Error: {exc}\n"
+                "Allow HTTPS access for py-solc-x (GitHub / solidity builds), or install solc on PATH "
+                "and set SETH_SOLC_VERSION to match."
+            ) from exc
+    solcx.set_solc_version(version)
+    _SOLC_PREPARED_VERSION = version
+    return version
+
+
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
-    try:
-        solcx.install_solc("0.8.30")
-        solcx.set_solc_version("0.8.30")
-    except: pass
+    version = _ensure_solc_for_compile()
 
-    compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
+    compiled = solcx.compile_source(
+        source,
+        output_values=['bin', 'abi'],
+        optimize=True,
+        evm_version='shanghai',
+        solc_version=version,
+    )
     
     # Flexible lookup to handle solc naming
     contract_data = None

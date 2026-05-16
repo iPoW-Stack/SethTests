@@ -6,8 +6,13 @@ import time
 import traceback
 from typing import Optional, Callable
 
-# Add clipy to path so we can import seth_sdk
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'clipy'))
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+# Optional sibling clipy SDK (fallback only; repo seth_sdk.py takes precedence)
+_clipy = os.path.join(_REPO_ROOT, "..", "clipy")
+if os.path.isdir(_clipy) and _clipy not in sys.path:
+    sys.path.append(_clipy)
 
 from seth_sdk import (
     SethWeb3Mock, SethClient, SethContract, StepType,

@@ -1086,7 +1086,8 @@ class SethClient:
             # Check if the response is actually JSON
             return int(response.json().get("balance", 0))
         except Exception as e:
-            print(f"DEBUG: Balance query failed for {a}. Response text: '{response_text}'")
+            if "get address failed from cache" not in response_text:
+                print(f"DEBUG: Balance query failed for {a}. Response text: '{response_text}'")
             return 0
 
     def get_nonce(self, a):
@@ -1170,4 +1171,3 @@ class SethClient:
 
         requests.post(self.gmssl_url, data=data, verify=self.verify_ssl)
         return txh_hex
-

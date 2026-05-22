@@ -2,6 +2,7 @@
 # Covers: Transfer, Nonce, Contract Creation Tx, Value Transfer
 # Reference: GeneralStateTests/stChainId, stEIP1559, stArgsZeroOneBalance, TransactionTests/
 from __future__ import annotations
+import secrets
 import time
 from utils import (
     SethTestContext, run_test, assert_tx_success, assert_equal,
@@ -116,14 +117,7 @@ def test_simple_transfer(ctx: SethTestContext):
 
 def test_transfer_zero_value(ctx: SethTestContext):
     """Test zero-value transfer (ref: stArgsZeroOneBalance)."""
-    dest = ctx.fresh_known_address("transfer_zero_value")
-    # Wait for any prior transfers to fully settle before capturing baseline
-    for _ in range(60):
-        time.sleep(1)
-        b = ctx.get_balance(dest)
-        if b > 0:
-            break
-    balance_before = ctx.get_balance(dest)
+    dest = secrets.token_hex(20)
     receipt = ctx.w3.seth.send_transaction(
         {'to': dest, 'value': 0}, ctx.ecdsa_key
     )
@@ -131,7 +125,7 @@ def test_transfer_zero_value(ctx: SethTestContext):
     # Wait for tx to be processed, then verify balance unchanged
     time.sleep(10)
     balance_after = ctx.get_balance(dest)
-    assert_equal(balance_after, balance_before, "transfer_zero_value_no_change")
+    assert_equal(balance_after, 0, "transfer_zero_value_no_change")
 
 
 def test_contract_creation_via_tx(ctx: SethTestContext):

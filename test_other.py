@@ -10,6 +10,7 @@
 #   - eip1559: EIP-1559 Transaction Tests
 #   - contract_chain: Contract Chain Same-Shard/Pool Demo
 from __future__ import annotations
+import concurrent.futures
 import subprocess, sys, os
 
 from utils import SethTestContext, print_section, results
@@ -28,7 +29,7 @@ OTHER_TESTS = [
 ]
 
 
-def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int, env: dict):
+def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int, env: dict, private_key: str | None = None):
     """Run a test script from other_tests/ as subprocess."""
     import config
     path = os.path.join(SCRIPT_DIR, rel_path)
@@ -41,10 +42,11 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
         if label == "seth3":
             cmd = [sys.executable, path] + extra_args
         else:
+            key = private_key or config.TEST_ECDSA_KEY
             cmd = [sys.executable, path,
                    "--host", str(config.SETH_HOST),
                    "--port", str(config.SETH_PORT),
-                   "--key", config.TEST_ECDSA_KEY] + extra_args
+                   "--key", key] + extra_args
 
         r = subprocess.run(
             cmd,
@@ -95,14 +97,14 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
             detail = f"{passed_count} passed" if total_count > 0 else "ok"
             # Add extra counts beyond the 1 that record_pass will add
             if passed_count > 1:
-                results.passed += passed_count - 1
+                results.add_counts(passed=passed_count - 1)
             results.record_pass(f"other_{label} ({detail})")
         else:
             detail = f"{failed_count} failed, {passed_count} passed, exit={r.returncode}"
             if passed_count > 0:
-                results.passed += passed_count
+                results.add_counts(passed=passed_count)
             if failed_count > 1:
-                results.failed += failed_count - 1
+                results.add_counts(failed=failed_count - 1)
             results.record_fail(f"other_{label}", detail)
             # Print last 30 lines of output for debugging
             lines = output.strip().splitlines()
@@ -129,3 +131,33 @@ def run_all(ctx: SethTestContext):
 
     for rel_path, label, extra_args, timeout in OTHER_TESTS:
         _run_other_script(rel_path, label, extra_args, timeout, env)
+
+
+def run_all_concurrent(ctx: SethTestContext, max_workers: int = 4, private_keys: list[str] | None = None):
+    print_section("Other Tests (subprocess, concurrent)")
+    # Import config directly to get the latest values (may be modified by seth_test_runner)
+    import config
+    env = os.environ.copy()
+    env["SETH_HOST"] = str(config.SETH_HOST)
+    env["SETH_PORT"] = str(config.SETH_PORT)
+    # Ensure other_tests/ can find seth_sdk.py
+    other_dir = os.path.join(SCRIPT_DIR, "other_tests")
+    env["PYTHONPATH"] = other_dir + os.pathsep + env.get("PYTHONPATH", "")
+
+    workers = min(max_workers, len(OTHER_TESTS))
+    print(f"Running {len(OTHER_TESTS)} other scripts with {workers} workers")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(
+                _run_other_script,
+                rel_path,
+                label,
+                extra_args,
+                timeout,
+                {**env, "DEPLOYER_PK": private_keys[i % len(private_keys)] if private_keys else config.TEST_ECDSA_KEY},
+                private_keys[i % len(private_keys)] if private_keys else None,
+            )
+            for i, (rel_path, label, extra_args, timeout) in enumerate(OTHER_TESTS)
+        ]
+        concurrent.futures.wait(futures)

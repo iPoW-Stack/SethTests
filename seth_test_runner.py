@@ -163,7 +163,25 @@ def run_module_concurrent(module, private_keys, max_workers):
     test_functions = get_test_functions(module)
 
     if not test_functions:
-        if hasattr(module, "run_all"):
+        if hasattr(module, "run_all_concurrent"):
+            print(f"{Color.YELLOW}No test functions found in module; running module wrapper concurrently{Color.END}")
+            ctx = SethTestContext()
+            ctx.ecdsa_key = private_keys[0]
+            ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
+            ctx.known_addresses = _addresses_for_keys(ctx, _recipient_keys(private_keys, [ctx.ecdsa_key]))
+            import config
+            old_key = config.TEST_ECDSA_KEY
+            try:
+                config.TEST_ECDSA_KEY = ctx.ecdsa_key
+                os.environ["SETH_TEST_KEY"] = ctx.ecdsa_key
+                module.run_all_concurrent(ctx, max_workers, private_keys=private_keys)
+            finally:
+                config.TEST_ECDSA_KEY = old_key
+                if old_key:
+                    os.environ["SETH_TEST_KEY"] = old_key
+                else:
+                    os.environ.pop("SETH_TEST_KEY", None)
+        elif hasattr(module, "run_all"):
             print(f"{Color.YELLOW}No test functions found in module; running module wrapper sequentially{Color.END}")
             ctx = SethTestContext()
             ctx.ecdsa_key = private_keys[0]

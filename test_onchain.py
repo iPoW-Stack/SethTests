@@ -2,6 +2,7 @@
 # Runs the existing test scripts from BlockchainTests/StateTests/ and GenesisTests/
 # as subprocesses and records results in the unified test tracker.
 from __future__ import annotations
+import concurrent.futures
 import subprocess, sys, os
 
 from utils import SethTestContext, print_section, results
@@ -30,11 +31,11 @@ ONCHAIN_TESTS = [
 ]
 
 
-def _subprocess_env() -> dict:
+def _subprocess_env(private_key: str | None = None) -> dict:
     env = os.environ.copy()
     env["SETH_HOST"] = str(config.SETH_HOST)
     env["SETH_PORT"] = str(config.SETH_PORT)
-    env["DEPLOYER_PK"] = config.TEST_ECDSA_KEY
+    env["DEPLOYER_PK"] = private_key or config.TEST_ECDSA_KEY
     existing = env.get("PYTHONPATH", "")
     parts = [SCRIPT_DIR] + ([existing] if existing else [])
     env["PYTHONPATH"] = os.pathsep.join(parts)
@@ -74,12 +75,14 @@ def _run_script(rel_path: str, label: str, env: dict):
         if r.returncode == 0:
             # 将子进程中的实际测试数量加到总数中
             # 减去1是因为record_pass本身会加1
-            results.passed += passed_count - 1 if passed_count > 0 else 0
+            results.add_counts(passed=passed_count - 1 if passed_count > 0 else 0)
             results.record_pass(f"onchain_{label} ({passed_count} passed)")
         else:
             # 记录子进程中的实际通过/失败数量
-            results.passed += passed_count
-            results.failed += failed_count - 1 if failed_count > 0 else 0
+            results.add_counts(
+                passed=passed_count,
+                failed=failed_count - 1 if failed_count > 0 else 0,
+            )
             results.record_fail(f"onchain_{label}",
                                 f"{failed_count} failed, {passed_count} passed, exit={r.returncode}")
             # Print last 20 lines of output for debugging
@@ -99,3 +102,21 @@ def run_all(ctx: SethTestContext):
 
     for rel_path, label in ONCHAIN_TESTS:
         _run_script(rel_path, label, env)
+
+
+def run_all_concurrent(ctx: SethTestContext, max_workers: int = 4, private_keys: list[str] | None = None):
+    print_section("On-chain State Tests (subprocess, concurrent)")
+    workers = min(max_workers, len(ONCHAIN_TESTS))
+    print(f"Running {len(ONCHAIN_TESTS)} on-chain scripts with {workers} workers")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(
+                _run_script,
+                rel_path,
+                label,
+                _subprocess_env(private_keys[i % len(private_keys)] if private_keys else None),
+            )
+            for i, (rel_path, label) in enumerate(ONCHAIN_TESTS)
+        ]
+        concurrent.futures.wait(futures)

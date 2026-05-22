@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import traceback
+from threading import Lock
 from typing import Optional, Callable
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -46,19 +47,29 @@ class TestResult:
         self.failed = 0
         self.skipped = 0
         self.errors = []
+        self._lock = Lock()
 
     def record_pass(self, name: str):
-        self.passed += 1
+        with self._lock:
+            self.passed += 1
         print(f"  {Color.GREEN}✅ PASS{Color.END} | {name}")
 
     def record_fail(self, name: str, reason: str = ""):
-        self.failed += 1
-        self.errors.append((name, reason))
+        with self._lock:
+            self.failed += 1
+            self.errors.append((name, reason))
         print(f"  {Color.RED}❌ FAIL{Color.END} | {name} — {reason}")
 
     def record_skip(self, name: str, reason: str = ""):
-        self.skipped += 1
+        with self._lock:
+            self.skipped += 1
         print(f"  {Color.YELLOW}⏭ SKIP{Color.END} | {name} — {reason}")
+
+    def add_counts(self, passed: int = 0, failed: int = 0, skipped: int = 0):
+        with self._lock:
+            self.passed += passed
+            self.failed += failed
+            self.skipped += skipped
 
     def summary(self):
         total = self.passed + self.failed + self.skipped

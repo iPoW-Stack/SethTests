@@ -97,37 +97,39 @@ contract SimpleStore {
 def test_simple_transfer(ctx: SethTestContext):
     """Test basic native token transfer between accounts."""
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    # Settle any in-flight txs before capturing baseline
+    time.sleep(3)
     balance_before = ctx.get_balance(dest)
     receipt = ctx.w3.seth.send_transaction(
         {'to': dest, 'value': 1000000}, ctx.ecdsa_key
     )
 
-    count = 0
-    while count < 30:
+    target = balance_before + 1000000
+    balance_after = balance_before
+    for _ in range(60):
         time.sleep(1)
         balance_after = ctx.get_balance(dest)
-        if balance_after > balance_before:
+        if balance_after >= target:
             break
-
-        count += 1
     assert_equal(balance_after, balance_before + 1000000, "transfer_balance_increased")
 
 
 def test_transfer_zero_value(ctx: SethTestContext):
     """Test zero-value transfer (ref: stArgsZeroOneBalance)."""
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
-    # Wait briefly for any prior transfers to settle before capturing baseline
-    time.sleep(3)
+    # Wait for any prior transfers to fully settle before capturing baseline
+    for _ in range(60):
+        time.sleep(1)
+        b = ctx.get_balance(dest)
+        if b > 0:
+            break
     balance_before = ctx.get_balance(dest)
     receipt = ctx.w3.seth.send_transaction(
         {'to': dest, 'value': 0}, ctx.ecdsa_key
     )
     assert_tx_success(receipt, "transfer_zero_value_success")
-    count = 0
-    while count < 10:
-        time.sleep(1)
-        count += 1
-
+    # Wait for tx to be processed, then verify balance unchanged
+    time.sleep(10)
     balance_after = ctx.get_balance(dest)
     assert_equal(balance_after, balance_before, "transfer_zero_value_no_change")
 

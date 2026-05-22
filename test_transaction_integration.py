@@ -175,22 +175,25 @@ def test_contract_balance_withdraw_roundtrip(ctx: SethTestContext):
     contract = deploy_contract_with_prefund(ctx, TX_INTEGRATION_SOL, "TxIntegrationTarget", args=[0])
     recipient = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
 
+    # Wait for any in-flight transfers to settle before capturing baseline
+    time.sleep(5)
     before = ctx.get_balance(recipient)
+
     r1 = contract.functions.payableSetCounter(5).transact(ctx.ecdsa_key, value=800000)
     assert_tx_success(r1, "txint_roundtrip_deposit_success")
     _settle()
 
     r2 = contract.functions.withdraw(recipient, 300000).transact(ctx.ecdsa_key)
     assert_tx_success(r2, "txint_roundtrip_withdraw_success")
-    _settle()
 
-    # Retry balance query up to 60 seconds
+    # Wait until recipient balance reflects the withdrawn amount
+    target = before + 300000
     after = before
     for _ in range(60):
-        after = ctx.get_balance(recipient)
-        if after > before:
-            break
         time.sleep(1)
+        after = ctx.get_balance(recipient)
+        if after >= target:
+            break
     assert_greater_than(after, before, "txint_roundtrip_recipient_balance_increased")
     assert_not_equal(contract.functions.totalReceived().call(), 0, "txint_roundtrip_total_received_nonzero")
 

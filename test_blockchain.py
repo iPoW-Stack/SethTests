@@ -150,6 +150,8 @@ def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
     """Reference: block import should commit both sender nonce changes and recipient balance changes."""
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
     nonce_before = ctx.get_nonce(ctx.ecdsa_addr)
+    # Wait for any in-flight transfers to settle before capturing baseline
+    time.sleep(5)
     balance_before = ctx.get_balance(dest)
 
     receipt = ctx.w3.seth.send_transaction({"to": dest, "value": 3456}, ctx.ecdsa_key)
@@ -159,11 +161,12 @@ def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
     nonce_after = ctx.get_nonce(ctx.ecdsa_addr)
     assert_equal(nonce_after, nonce_before + 1, "bc_nonce_incremented")
 
-    # Retry balance query up to 60 seconds
+    # Wait until recipient balance reflects the transferred amount
+    target = balance_before + 3456
     balance_after = balance_before
     for _ in range(60):
         balance_after = ctx.get_balance(dest)
-        if balance_after > balance_before:
+        if balance_after >= target:
             break
         time.sleep(1)
     assert_greater_than(balance_after, balance_before, "bc_balance_increased")

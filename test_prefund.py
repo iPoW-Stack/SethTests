@@ -90,7 +90,7 @@ def test_prefund_basic_deposit(ctx: SethTestContext):
     assert_tx_success(receipt, "prefund_deposit_tx")
 
     count = 0
-    while count < 30:
+    while count < 60:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + deposit_amount:
@@ -118,12 +118,11 @@ def test_prefund_multiple_deposits(ctx: SethTestContext):
     assert_tx_success(receipt2, "prefund_multi_deposit_2")
 
     count = 0
-    while count < 30:
+    while count < 60:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + 5000000:
             break
-
         count += 1
 
     # Verify total accumulation

@@ -94,7 +94,7 @@ def _settle():
 
 def test_nonce_progression_on_sequential_transfers(ctx: SethTestContext):
     """Reference: TransactionTests nonce sequencing; every successful transfer should consume one nonce."""
-    dest = ctx.fresh_address("txint_nonce_progression")
+    dest = ctx.fresh_known_address("txint_nonce_progression")
     nonce0 = ctx.get_nonce(ctx.ecdsa_addr)
 
     receipt1 = ctx.w3.seth.send_transaction({"to": dest, "value": 1111}, ctx.ecdsa_key)
@@ -114,7 +114,7 @@ def test_nonce_progression_on_sequential_transfers(ctx: SethTestContext):
 
 def test_insufficient_balance_transaction_rejected(ctx: SethTestContext):
     """Reference: TransactionTests invalid sender balance; an absurd value transfer should fail."""
-    dest = ctx.fresh_address("txint_insufficient_balance")
+    dest = ctx.fresh_known_address("txint_insufficient_balance")
     # Use a value that fits in uint64 but still exceeds any realistic balance
     impossible_value = 2**63 - 1  # max signed int64, ~9.2e18
     try:
@@ -173,7 +173,7 @@ def test_value_plus_calldata_updates_balance_and_state(ctx: SethTestContext):
 def test_contract_balance_withdraw_roundtrip(ctx: SethTestContext):
     """Reference: transaction + state persistence; deposited contract balance should be withdrawable in a later tx."""
     contract = deploy_contract_with_prefund(ctx, TX_INTEGRATION_SOL, "TxIntegrationTarget", args=[0])
-    recipient = ctx.fresh_address("txint_withdraw_roundtrip")
+    recipient = ctx.fresh_known_address("txint_withdraw_roundtrip")
 
     # Wait for any in-flight transfers to settle before capturing baseline
     time.sleep(5)

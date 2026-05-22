@@ -126,13 +126,17 @@ def get_test_functions(module):
                 test_functions.append((name, func))
     return test_functions
 
-def run_single_test(test_name, test_func, private_key, test_id):
+def run_single_test(test_name, test_func, private_key, test_id, private_keys=None):
     """Run a single test with a specific private key."""
     try:
         # Create a new context with the specific private key
         ctx = SethTestContext()
         ctx.ecdsa_key = private_key
         ctx.ecdsa_addr = ctx.client.get_address(private_key)
+        ctx.known_addresses = [
+            ctx.client.get_address(key)
+            for key in (private_keys or [])
+        ]
         
         # Debug: Print private key and generated address
         print(f"\n{Color.BLUE}▶ [{test_id}] {test_name} (Key: {private_key[:8]}...){Color.END}")
@@ -160,6 +164,7 @@ def run_module_concurrent(module, private_keys, max_workers):
             ctx = SethTestContext()
             ctx.ecdsa_key = private_keys[0]
             ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
+            ctx.known_addresses = [ctx.client.get_address(key) for key in private_keys]
             import config
             old_key = config.TEST_ECDSA_KEY
             try:
@@ -190,7 +195,7 @@ def run_module_concurrent(module, private_keys, max_workers):
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for test_name, test_func, private_key, test_id in tasks:
-            future = executor.submit(run_single_test, test_name, test_func, private_key, test_id)
+            future = executor.submit(run_single_test, test_name, test_func, private_key, test_id, private_keys)
             futures.append(future)
         
         # Wait for all tests to complete

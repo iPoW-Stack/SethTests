@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 import os
 import time
-import hashlib
 import traceback
 from typing import Optional, Callable
 
@@ -79,6 +78,7 @@ class TestResult:
 
 # Global result tracker
 results = TestResult()
+DEFAULT_RECIPIENT_ADDRESS = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
 
 # ==============================================================================
 # Seth Test Context
@@ -93,6 +93,7 @@ class SethTestContext:
         self.ecdsa_key = _cfg.TEST_ECDSA_KEY
         self.ecdsa_addr = self.client.get_address(_cfg.TEST_ECDSA_KEY)
         self.salt_counter = 0
+        self.known_addresses = []
         
         # Debug: Print private key and generated address
         print(f"{Color.YELLOW}Debug - SethTestContext Init:{Color.END}")
@@ -110,10 +111,14 @@ class SethTestContext:
     def get_nonce(self, addr: str) -> int:
         return self.client.get_nonce(addr)
 
-    def fresh_address(self, label: str = "") -> str:
-        """Return a unique 20-byte hex address for tests that need isolation."""
-        seed = f"{self.ecdsa_addr}:{RANDOM_SALT}:{self.next_salt()}:{label}:{time.time_ns()}"
-        return hashlib.sha256(seed.encode("utf-8")).hexdigest()[-40:]
+    def fresh_known_address(self, label: str = "") -> str:
+        """Return a known on-chain address that is not the current sender."""
+        candidates = [addr for addr in self.known_addresses if addr != self.ecdsa_addr]
+        if not candidates:
+            return DEFAULT_RECIPIENT_ADDRESS
+        salt = int(self.next_salt()[-4:])
+        label_offset = sum(ord(ch) for ch in label)
+        return candidates[(salt + label_offset) % len(candidates)]
 
 # ==============================================================================
 # Assertion Helpers

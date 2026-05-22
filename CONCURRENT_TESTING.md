@@ -5,9 +5,10 @@ This document describes the new concurrent testing functionality added to `seth_
 ## New Features
 
 ### 1. Private Key List Support
-- Load multiple private keys from a JSON file
+- Load multiple private keys from a text file (two columns format)
 - Each test case uses a different private key (cycling through the list)
-- Supports both array format and object format with `private_keys` field
+- First column contains the private key, second column is optional description
+- Supports comments (lines starting with #)
 
 ### 2. Concurrent Test Execution
 - Run test cases in parallel using ThreadPoolExecutor
@@ -15,7 +16,7 @@ This document describes the new concurrent testing functionality added to `seth_
 - Each test runs with its own private key and context
 
 ### 3. Enhanced Command Line Arguments
-- `--private-keys <file>`: JSON file containing list of private keys
+- `--private-keys <file>`: Text file containing list of private keys
 - `--concurrent`: Enable concurrent test execution
 - `--max-workers <n>`: Maximum number of concurrent workers (default: 4)
 
@@ -27,48 +28,47 @@ This document describes the new concurrent testing functionality added to `seth_
 python seth_test_runner.py --module core
 
 # Run tests sequentially with multiple private keys (one per test)
-python seth_test_runner.py --module core --private-keys private_keys.json
+python seth_test_runner.py --module core --private-keys private_keys.txt
 ```
 
 ### Concurrent Usage
 ```bash
 # Run tests concurrently with multiple private keys
-python seth_test_runner.py --module core --private-keys private_keys.json --concurrent
+python seth_test_runner.py --module core --private-keys private_keys.txt --concurrent
 
 # Run tests concurrently with custom worker count
-python seth_test_runner.py --module core --private-keys private_keys.json --concurrent --max-workers 8
+python seth_test_runner.py --module core --private-keys private_keys.txt --concurrent --max-workers 8
 
 # Run all tests concurrently
-python seth_test_runner.py --private-keys private_keys.json --concurrent
+python seth_test_runner.py --private-keys private_keys.txt --concurrent
 ```
 
 ### Phase-specific Testing
 ```bash
-# Run Phase 1 tests concurrently
-python seth_test_runner.py --phase 1 --private-keys private_keys.json --concurrent
+# Run Phase 1 tests concurrent哪些
+python seth_test_runner.py --phase 1 --private-keys private_keys.txt --concurrent
 ```
 
 ## Private Keys File Format
 
-### Array Format
-```json
-[
-  "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6",
-  "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-  "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
-]
+### Text Format (Two Columns)
+```
+# Private Keys File
+# Format: private_key [optional_description]
+# Lines starting with # are comments and will be ignored
+
+71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6    default_test_key
+ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80    hardhat_account_0
+59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d    hardhat_account_1
+5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a    hardhat_account_2
 ```
 
-### Object Format
-```json
-{
-  "private_keys": [
-    "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6",
-    "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-    "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
-  ]
-}
-```
+**Format Rules:**
+- Each line contains a private key in the first column
+- Optional description can be added in the second column (separated by whitespace)
+- Lines starting with `#` are treated as comments and ignored
+- Empty lines are ignored
+- Private keys should be 64 characters long (hex format)
 
 ## How It Works
 
@@ -127,6 +127,6 @@ python test_runner_functionality.py
 ```
 
 This test verifies:
-- Private key loading from JSON files
+- Private key loading from text files
 - Command line argument parsing
 - Concurrent execution logic and key distribution

@@ -87,16 +87,31 @@ def list_tests():
         print()
 
 def load_private_keys(file_path):
-    """Load private keys from JSON file."""
+    """Load private keys from text file (two columns, first column is private key)."""
     try:
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return data
-            elif isinstance(data, dict) and 'private_keys' in data:
-                return data['private_keys']
-            else:
-                raise ValueError("JSON file must contain a list of private keys or an object with 'private_keys' field")
+        private_keys = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):  # Skip empty lines and comments
+                    continue
+                
+                # Split by whitespace (space, tab, etc.)
+                parts = line.split()
+                if len(parts) < 1:
+                    continue
+                
+                private_key = parts[0].strip()
+                if len(private_key) != 64:  # Standard private key length
+                    print(f"{Color.YELLOW}Warning: Line {line_num} - Private key length is not 64 characters: {private_key[:8]}...{Color.END}")
+                
+                private_keys.append(private_key)
+        
+        if not private_keys:
+            raise ValueError("No valid private keys found in file")
+        
+        return private_keys
+        
     except Exception as e:
         print(f"{Color.RED}Error loading private keys from {file_path}: {e}{Color.END}")
         sys.exit(1)

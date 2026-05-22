@@ -16,19 +16,31 @@ def test_private_key_loading():
     """Test the private key loading functionality."""
     print("Testing private key loading...")
     
-    # Test loading from the sample file
+    # Test loading from the sample text file
     try:
-        with open('private_keys.json', 'r') as f:
-            data = json.load(f)
-            if isinstance(data, dict) and 'private_keys' in data:
-                private_keys = data['private_keys']
-                print(f"[PASS] Successfully loaded {len(private_keys)} private keys")
-                print(f"   First key: {private_keys[0][:8]}...")
-                print(f"   Last key:  {private_keys[-1][:8]}...")
-                return True
-            else:
-                print("[FAIL] Invalid JSON structure")
-                return False
+        private_keys = []
+        with open('private_keys.txt', 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):  # Skip empty lines and comments
+                    continue
+                
+                # Split by whitespace (space, tab, etc.)
+                parts = line.split()
+                if len(parts) < 1:
+                    continue
+                
+                private_key = parts[0].strip()
+                private_keys.append(private_key)
+        
+        if private_keys:
+            print(f"[PASS] Successfully loaded {len(private_keys)} private keys")
+            print(f"   First key: {private_keys[0][:8]}...")
+            print(f"   Last key:  {private_keys[-1][:8]}...")
+            return True
+        else:
+            print("[FAIL] No private keys found")
+            return False
     except Exception as e:
         print(f"[FAIL] Error loading private keys: {e}")
         return False

@@ -20,6 +20,9 @@ from eth_utils import to_checksum_address
 passed = 0
 failed = 0
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTRACT_CREATE_PREFUND = 200_000_000
+CONTRACT_EXTRA_PREFUND = 500_000_000
+CONTRACT_EXEC_PREFUND = 200_000_000
 
 
 def assert_eq(name, got, expected):
@@ -80,13 +83,17 @@ def main():
     contract = next(v for k, v in comp.items() if "LogShiftTestContract" in k)
     bytecode = contract["bin"].replace("0x", "").strip()
 
-    salt = secrets.token_hex(32)
+    salt = secrets.token_hex(31) + "f4"
     addr = calc_create2(sender, salt, bytecode)
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
-                                    contract_code=bytecode, prefund=10_000_000)
+                                    contract_code=bytecode, prefund=CONTRACT_CREATE_PREFUND)
     rc = cli.wait_for_receipt(tx)
-    assert_true("deploy", rc and rc.get("status") == 0)
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
+    deploy_ok = rc and rc.get("status") == 0
+    assert_true("deploy", deploy_ok)
+    if not deploy_ok:
+        print(f"  deploy receipt: {rc}")
+        return failed
+    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=CONTRACT_EXTRA_PREFUND)
     cli.wait_for_receipt(tx)
 
     # 辅助函数：查询prefund余额
@@ -108,7 +115,7 @@ def main():
         time.sleep(min(timeout, 10))  # 最多等10秒
 
     # 辅助函数：执行合约调用（先prefund再执行）
-    def call_contract(input_hex, prefund_amount=5_000_000):
+    def call_contract(input_hex, prefund_amount=CONTRACT_EXEC_PREFUND):
         # 发送prefund交易
         tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=prefund_amount)
         cli.wait_for_receipt(tx)
@@ -117,7 +124,8 @@ def main():
         wait_for_prefund_simple(3)
         
         # 执行合约调用
-        tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute, input_hex=input_hex)
+        tx = cli.send_transaction_auto(pk, addr, StepType.kContractExcute,
+                                       input_hex=input_hex, prefund=prefund_amount)
         return cli.wait_for_receipt(tx)
 
     # ==================== LOG Tests ====================

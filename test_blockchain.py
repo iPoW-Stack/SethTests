@@ -148,7 +148,7 @@ def test_value_transfer_and_state_survive_across_blocks(ctx: SethTestContext):
 
 def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
     """Reference: block import should commit both sender nonce changes and recipient balance changes."""
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    dest = ctx.fresh_address("bc_nonce_balance")
     nonce_before = ctx.get_nonce(ctx.ecdsa_addr)
     # Wait for any in-flight transfers to settle before capturing baseline
     time.sleep(5)

@@ -498,7 +498,7 @@ class SethMethod:
             # If it's a single return value, return 0; if it's a tuple, return our safe defaults
             return default_return if len(self.output_types) > 1 else 0
 
-    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
+    def transact(self, private_key: str, value: int = 0, prefund: int = 0, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
         """
         Transaction logic with automatic parsing. 
         Supports GMSSL (via gm_mode), OQS (auto-detection), and standard ECDSA.
@@ -566,7 +566,7 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
     
-    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
+    def transact(self, private_key: str, value: int = 0, prefund: int = 0, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
         """
         Core transaction triggering logic: supports ECDSA, OQS, and GmSSL.
         """
@@ -836,7 +836,7 @@ class SethClient:
             msg.extend(bytes.fromhex(pub))
             msg.extend(bytes.fromhex(to_clean))
             msg.extend(struct.pack('<Q', amount))
-            msg.extend(struct.pack('<Q', 5000000))
+            msg.extend(struct.pack('<Q', 50000000))
             msg.extend(struct.pack('<Q', 1))
             msg.extend(struct.pack('<Q', int(step)))
             if contract_code: msg.extend(bytes.fromhex(contract_code))
@@ -844,7 +844,7 @@ class SethClient:
             if prefund > 0: msg.extend(struct.pack('<Q', prefund))
             _txh = keccak.new(digest_bits=256).update(msg).digest()
             _sig = sk.sign_digest_deterministic(_txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-            _data = {"nonce": str(_nonce), "pubkey": pub, "to": to_clean, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": _sig[:32].hex(), "sign_s": _sig[32:64].hex(), "sign_v": "0"}
+            _data = {"nonce": str(_nonce), "pubkey": pub, "to": to_clean, "amount": str(amount), "gas_limit": "50000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": _sig[:32].hex(), "sign_s": _sig[32:64].hex(), "sign_v": "0"}
             if contract_code: _data["bytes_code"] = contract_code
             if input_hex: _data["input"] = input_hex
             if prefund: _data["prefund"] = str(prefund)

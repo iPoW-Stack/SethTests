@@ -96,7 +96,7 @@ contract SimpleStore {
 
 def test_simple_transfer(ctx: SethTestContext):
     """Test basic native token transfer between accounts."""
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    dest = ctx.fresh_address("simple_transfer")
     # Settle any in-flight txs before capturing baseline
     time.sleep(3)
     balance_before = ctx.get_balance(dest)
@@ -116,7 +116,7 @@ def test_simple_transfer(ctx: SethTestContext):
 
 def test_transfer_zero_value(ctx: SethTestContext):
     """Test zero-value transfer (ref: stArgsZeroOneBalance)."""
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    dest = ctx.fresh_address("transfer_zero_value")
     # Wait for any prior transfers to fully settle before capturing baseline
     for _ in range(60):
         time.sleep(1)
@@ -172,7 +172,7 @@ def test_value_transfer_to_contract(ctx: SethTestContext):
 
 def test_multiple_transfers_sequential(ctx: SethTestContext):
     """Test multiple sequential transfers (nonce increment)."""
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    dest = ctx.fresh_address("multiple_transfers_sequential")
     for i in range(3):
         receipt = ctx.w3.seth.send_transaction(
             {'to': dest, 'value': 100000}, ctx.ecdsa_key
@@ -211,7 +211,7 @@ def test_gas_consumption(ctx: SethTestContext):
 def test_nonce_increment(ctx: SethTestContext):
     """Test that nonce increments with each transaction."""
     initial_nonce = ctx.get_nonce(ctx.ecdsa_addr)
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    dest = ctx.fresh_address("nonce_increment")
     ctx.w3.seth.send_transaction({'to': dest, 'value': 1000}, ctx.ecdsa_key)
     time.sleep(1)
     new_nonce = ctx.get_nonce(ctx.ecdsa_addr)

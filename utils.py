@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import os
 import time
+import hashlib
 import traceback
 from typing import Optional, Callable
 
@@ -108,6 +109,11 @@ class SethTestContext:
 
     def get_nonce(self, addr: str) -> int:
         return self.client.get_nonce(addr)
+
+    def fresh_address(self, label: str = "") -> str:
+        """Return a unique 20-byte hex address for tests that need isolation."""
+        seed = f"{self.ecdsa_addr}:{RANDOM_SALT}:{self.next_salt()}:{label}:{time.time_ns()}"
+        return hashlib.sha256(seed.encode("utf-8")).hexdigest()[-40:]
 
 # ==============================================================================
 # Assertion Helpers

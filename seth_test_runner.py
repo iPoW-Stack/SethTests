@@ -153,9 +153,27 @@ def run_single_test(test_name, test_func, private_key, test_id):
 def run_module_concurrent(module, private_keys, max_workers):
     """Run all tests in a module concurrently with different private keys."""
     test_functions = get_test_functions(module)
-    
+
     if not test_functions:
-        print(f"{Color.YELLOW}No test functions found in module{Color.END}")
+        if hasattr(module, "run_all"):
+            print(f"{Color.YELLOW}No test functions found in module; running module wrapper sequentially{Color.END}")
+            ctx = SethTestContext()
+            ctx.ecdsa_key = private_keys[0]
+            ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
+            import config
+            old_key = config.TEST_ECDSA_KEY
+            try:
+                config.TEST_ECDSA_KEY = ctx.ecdsa_key
+                os.environ["SETH_TEST_KEY"] = ctx.ecdsa_key
+                module.run_all(ctx)
+            finally:
+                config.TEST_ECDSA_KEY = old_key
+                if old_key:
+                    os.environ["SETH_TEST_KEY"] = old_key
+                else:
+                    os.environ.pop("SETH_TEST_KEY", None)
+        else:
+            print(f"{Color.YELLOW}No test functions found in module{Color.END}")
         return
     
     # Create test tasks - cycle through private keys

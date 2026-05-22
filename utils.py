@@ -9,6 +9,8 @@ from typing import Optional, Callable
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
+# Add other_tests to path so we can import seth_sdk
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'other_tests'))
 # Optional sibling clipy SDK (fallback only; repo seth_sdk.py takes precedence)
 _clipy = os.path.join(_REPO_ROOT, "..", "clipy")
 if os.path.isdir(_clipy) and _clipy not in sys.path:
@@ -160,7 +162,7 @@ def assert_true(condition: bool, test_name: str, detail: str = ""):
 def deploy_contract(ctx: SethTestContext, source: str, name: str,
                     args: list = None, amount: int = 0,
                     libs: dict = None) -> SethContract:
-    """Compile and deploy a contract, return the SethContract object."""
+    """Compile, deploy a contract, and wait until the contract address is live."""
     bin_code, abi = compile_and_link(source, name, libs=libs)
     contract = ctx.w3.seth.contract(abi=abi, bytecode=bin_code, sender_address=ctx.ecdsa_addr)
     contract.deploy({
@@ -169,7 +171,15 @@ def deploy_contract(ctx: SethTestContext, source: str, name: str,
         'args': args or [],
         'amount': amount,
     }, ctx.ecdsa_key)
-    time.sleep(CONSENSUS_SETTLE_DELAY)
+    # Wait for the contract address to appear on-chain (up to 60s)
+    for _ in range(30):
+        time.sleep(2)
+        try:
+            nonce = ctx.client.get_nonce(contract.address)
+            if nonce is not None:
+                break
+        except Exception:
+            pass
     return contract
 
 def deploy_contract_with_prefund(ctx: SethTestContext, source: str, name: str,

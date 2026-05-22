@@ -296,10 +296,10 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
                 if balance >= initial_balance:
                     elapsed = time.time() - start_time
                     print(f"  ✅ Address is active! (took {elapsed:.1f}s)")
-
-                    # Query actual shard/pool from blockchain — allow more time here
-                    actual_info = query_address_info(w3, address, max_wait=60)
-
+                    
+                    # Query actual shard/pool from blockchain
+                    actual_info = query_address_info(w3, address, max_wait=30)
+                    
                     if actual_info:
                         print(f"  📊 Blockchain Info:")
                         print(f"     Address: {address}")
@@ -307,8 +307,8 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
                         print(f"     Balance: {actual_info['balance']}")
                         return private_key, address, actual_info
                     else:
-                        # Do not return early — keep waiting until overall max_wait
-                        print(f"  ⚠️  Could not query shard/pool info yet, will continue waiting...")
+                        print(f"  ⚠️  Could not query shard/pool info")
+                        return private_key, address, None
                 
                 # Address exists but balance not yet updated
                 if balance > 0:
@@ -526,12 +526,15 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     print(f"\n👤 Current User2:")
     print(f"   Address: {user2_addr}")
-    print(f"   Shard: {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
-    
+    if user2_info:
+        print(f"   Shard: {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
+    else:
+        print(f"   Shard/Pool: unknown (blockchain query timed out)")
+
     # 检查是否需要重新生成
-    if user2_info['shard_id'] != target_shard or user2_info['pool_index'] != target_pool:
+    if not user2_info or user2_info['shard_id'] != target_shard or user2_info['pool_index'] != target_pool:
         print(f"\n⚠️  User2 mismatch detected:")
-        print(f"   User2: Shard {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
+        print(f"   User2: Shard {user2_info['shard_id'] if user2_info else 'unknown'}, Pool: {user2_info['pool_index'] if user2_info else 'unknown'}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User2 to match target shard/pool...")
         print(f"   Using old User2 to fund the new User2...")
@@ -587,12 +590,15 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     print(f"\n👤 Current User3:")
     print(f"   Address: {user3_addr}")
-    print(f"   Shard: {user3_info['shard_id']}, Pool: {user3_info['pool_index']}")
-    
+    if user3_info:
+        print(f"   Shard: {user3_info['shard_id']}, Pool: {user3_info['pool_index']}")
+    else:
+        print(f"   Shard/Pool: unknown (blockchain query timed out)")
+
     # 检查是否需要重新生成
-    if user3_info['shard_id'] != target_shard or user3_info['pool_index'] != target_pool:
+    if not user3_info or user3_info['shard_id'] != target_shard or user3_info['pool_index'] != target_pool:
         print(f"\n⚠️  User3 mismatch detected:")
-        print(f"   User3: Shard {user3_info['shard_id']}, Pool {user3_info['pool_index']}")
+        print(f"   User3: Shard {user3_info['shard_id'] if user3_info else 'unknown'}, Pool {user3_info['pool_index'] if user3_info else 'unknown'}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User3 to match target shard/pool...")
         print(f"   Using old User3 to fund the new User3...")

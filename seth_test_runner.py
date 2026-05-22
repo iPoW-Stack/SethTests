@@ -1,6 +1,8 @@
 # Seth Test Runner - Main entry point
 from __future__ import annotations
-import sys, os, argparse, time
+import sys, os, argparse, time, json
+import concurrent.futures
+from threading import Lock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
 from utils import SethTestContext, Color, print_section, results
@@ -33,9 +35,12 @@ def parse_args():
                    help="Run specific module")
     p.add_argument("--skip-oqs", action="store_true")
     p.add_argument("--list", action="store_true")
+    p.add_argument("--private-keys", type=str, help="JSON file containing list of private keys")
+    p.add_argument("--concurrent", action="store_true", help="Run tests concurrently")
+    p.add_argument("--max-workers", type=int, default=4, help="Maximum number of concurrent workers")
     return p.parse_args()
 
-def print_banner(ctx):
+def print_banner(ctx, private_keys=None, concurrent=False):
     import config
     sep = "=" * 60
     print()
@@ -43,7 +48,12 @@ def print_banner(ctx):
     print("  Seth EVM Compatibility Test Suite")
     print(sep)
     print(f"  Node:  http://{config.SETH_HOST}:{config.SETH_PORT}")
-    print(f"  ECDSA: {ctx.ecdsa_addr}")
+    if private_keys:
+        print(f"  Keys:  {len(private_keys)} private keys loaded")
+        print(f"  Mode:  {'Concurrent' if concurrent else 'Sequential'}")
+    else:
+        print(f"  ECDSA: {ctx.ecdsa_addr}")
+        print(f"  Mode:  Sequential (single key)")
     print(sep)
     print()
 
@@ -76,8 +86,95 @@ def list_tests():
                     print(f"    - {n}")
         print()
 
+def load_private_keys(file_path):
+    """Load private keys from JSON file."""
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict) and 'private_keys' in data:
+                return data['private_keys']
+            else:
+                raise ValueError("JSON file must contain a list of private keys or an object with 'private_keys' field")
+    except Exception as e:
+        print(f"{Color.RED}Error loading private keys from {file_path}: {e}{Color.END}")
+        sys.exit(1)
+
+def get_test_functions(module):
+    """Extract all test functions from a module."""
+    test_functions = []
+    for name in sorted(dir(module)):
+        if name.startswith("test_"):
+            func = getattr(module, name)
+            if callable(func):
+                test_functions.append((name, func))
+    return test_functions
+
+def run_single_test(test_name, test_func, private_key, test_id):
+    """Run a single test with a specific private key."""
+    try:
+        # Create a new context with the specific private key
+        ctx = SethTestContext()
+        ctx.ecdsa_key = private_key
+        ctx.ecdsa_addr = ctx.client.get_address(private_key)
+        
+        print(f"\n{Color.BLUE}▶ [{test_id}] {test_name} (Key: {private_key[:8]}...){Color.END}")
+        
+        # Run the test
+        test_func(ctx)
+        
+        print(f"  {Color.GREEN}✅ COMPLETED{Color.END} | [{test_id}] {test_name}")
+            
+    except Exception as e:
+        print(f"  {Color.RED}❌ ERROR{Color.END} | [{test_id}] {test_name}: {e}")
+        import traceback
+        traceback.print_exc()
+
+def run_module_concurrent(module, private_keys, max_workers):
+    """Run all tests in a module concurrently with different private keys."""
+    test_functions = get_test_functions(module)
+    
+    if not test_functions:
+        print(f"{Color.YELLOW}No test functions found in module{Color.END}")
+        return
+    
+    # Create test tasks - cycle through private keys
+    tasks = []
+    for i, (test_name, test_func) in enumerate(test_functions):
+        private_key = private_keys[i % len(private_keys)]
+        test_id = f"T{i+1:03d}"
+        tasks.append((test_name, test_func, private_key, test_id))
+    
+    print(f"\n{Color.BOLD}Running {len(tasks)} tests concurrently with {min(max_workers, len(tasks))} workers{Color.END}")
+    print(f"Using {len(private_keys)} private keys in rotation")
+    
+    # Execute tests concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for test_name, test_func, private_key, test_id in tasks:
+            future = executor.submit(run_single_test, test_name, test_func, private_key, test_id)
+            futures.append(future)
+        
+        # Wait for all tests to complete
+        concurrent.futures.wait(futures)
+
+def run_module_sequential(module, ctx):
+    """Run all tests in a module sequentially (original behavior)."""
+    module.run_all(ctx)
+
+def execute_test_phase(modules, private_keys, concurrent, max_workers, ctx):
+    """Execute a phase of tests either concurrently or sequentially."""
+    for module in modules:
+        if concurrent and private_keys:
+            run_module_concurrent(module, private_keys, max_workers)
+        else:
+            run_module_sequential(module, ctx)
+
 def main():
     args = parse_args()
+    
+    # Configure host and port
     if args.host:
         import config
         config.SETH_HOST = args.host
@@ -86,54 +183,71 @@ def main():
         import config
         config.SETH_PORT = args.port
         os.environ["SETH_PORT"] = str(args.port)
+    
+    # Load private keys if specified
+    private_keys = None
+    if args.private_keys:
+        private_keys = load_private_keys(args.private_keys)
+        if not private_keys:
+            print(f"{Color.RED}No private keys found in file{Color.END}")
+            sys.exit(1)
+        print(f"{Color.GREEN}Loaded {len(private_keys)} private keys{Color.END}")
+    
+    # Create default context
     ctx = SethTestContext()
-    if args.list: list_tests(); return
-    print_banner(ctx)
+    
+    # Handle list command
+    if args.list: 
+        list_tests()
+        return
+    
+    # Print banner
+    print_banner(ctx, private_keys, args.concurrent)
     t0 = time.time()
 
+    # Determine execution mode
+    concurrent = args.concurrent and private_keys is not None
+    if args.concurrent and not private_keys:
+        print(f"{Color.YELLOW}Warning: --concurrent specified but no private keys provided. Running sequentially.{Color.END}")
+
+    # Execute tests based on arguments
     if args.module:
-        MODULE_MAP[args.module].run_all(ctx)
+        module = MODULE_MAP[args.module]
+        if concurrent:
+            run_module_concurrent(module, private_keys, args.max_workers)
+        else:
+            run_module_sequential(module, ctx)
     elif args.phase == 1:
-        test_core_evm.run_all(ctx)
-        test_contracts.run_all(ctx)
+        execute_test_phase([test_core_evm, test_contracts], private_keys, concurrent, args.max_workers, ctx)
     elif args.phase == 2:
-        test_transactions.run_all(ctx)
-        test_transaction_integration.run_all(ctx)
+        execute_test_phase([test_transactions, test_transaction_integration], private_keys, concurrent, args.max_workers, ctx)
     elif args.phase == 3:
-        test_prefund.run_all(ctx)
+        modules = [test_prefund]
         if not args.skip_oqs:
-            test_oqs.run_all(ctx)
+            modules.append(test_oqs)
+        execute_test_phase(modules, private_keys, concurrent, args.max_workers, ctx)
     elif args.phase == 4:
-        test_blockchain.run_all(ctx)
+        execute_test_phase([test_blockchain], private_keys, concurrent, args.max_workers, ctx)
     elif args.phase == 5:
-        test_basic.run_all(ctx)
-        test_genesis.run_all(ctx)
-        test_vm_opcodes.run_all(ctx)
-        test_onchain.run_all(ctx)
+        execute_test_phase([test_basic, test_genesis, test_vm_opcodes, test_onchain], private_keys, concurrent, args.max_workers, ctx)
     elif args.phase == 6:
-        test_other.run_all(ctx)
+        execute_test_phase([test_other], private_keys, concurrent, args.max_workers, ctx)
     else:
         # Run everything
-        # Phase 0: Offline basic tests
-        test_basic.run_all(ctx)
-        # Phase 1: Core EVM + Contracts
-        test_core_evm.run_all(ctx)
-        test_contracts.run_all(ctx)
-        # Phase 2: Transactions
-        test_transactions.run_all(ctx)
-        test_transaction_integration.run_all(ctx)
-        # Phase 3: Prefund + OQS
-        test_prefund.run_all(ctx)
+        all_modules = [
+            test_basic,  # Phase 0: Offline basic tests
+            test_core_evm, test_contracts,  # Phase 1: Core EVM + Contracts
+            test_transactions, test_transaction_integration,  # Phase 2: Transactions
+            test_prefund,  # Phase 3A: Prefund
+        ]
         if not args.skip_oqs:
-            test_oqs.run_all(ctx)
-        # Phase 4: Blockchain semantics
-        test_blockchain.run_all(ctx)
-        # Phase 5: Genesis + VM + On-chain state tests
-        test_genesis.run_all(ctx)
-        test_vm_opcodes.run_all(ctx)
-        test_onchain.run_all(ctx)
-        # Phase 6: Other tests (AMM, Cross-Shard, EIP-1559)
-        test_other.run_all(ctx)
+            all_modules.append(test_oqs)  # Phase 3B: OQS
+        all_modules.extend([
+            test_blockchain,  # Phase 4: Blockchain semantics
+            test_genesis, test_vm_opcodes, test_onchain,  # Phase 5: Genesis + VM + On-chain state tests
+            test_other,  # Phase 6: Other tests
+        ])
+        execute_test_phase(all_modules, private_keys, concurrent, args.max_workers, ctx)
 
     elapsed = time.time() - t0
     ok = results.summary()

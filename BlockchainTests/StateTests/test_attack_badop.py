@@ -67,12 +67,12 @@ def deploy(cli, pk, sender, bytecode, label):
     addr = calc_create2(sender, salt, bytecode)
     print(f"  {label}: {addr}")
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
-                                    contract_code=bytecode, prefund=10_000_000)
+                                    contract_code=bytecode, prefund=20_000_000)
     rc = cli.wait_for_receipt(tx)
-    time.sleep(1)
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
+    time.sleep(2)
+    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=20_000_000)
     cli.wait_for_receipt(tx)
-    time.sleep(1)
+    time.sleep(2)
     return addr, rc and rc.get("status") == 0
 
 
@@ -138,6 +138,12 @@ def main():
     rc = safe_tx(cli, pk, attack_addr, inp, "gasBomb")
     assert_true("gasBomb completes", rc is not None)
 
+    # gasBomb drains the gas pool — re-prefund before subsequent tests
+    print("\n[Re-prefund] Replenishing gas pool after gasBomb...")
+    tx = cli.send_transaction_auto(pk, attack_addr, StepType.kContractGasPrefund, prefund=30_000_000)
+    cli.wait_for_receipt(tx)
+    time.sleep(2)
+
     # Test 4: Reentrancy attack
     print("\n[Test 4] Reentrancy attack")
     inp = sel("setVictim(address)") + eth_abi.encode(["address"], [to_checksum_address("0x" + victim_addr)]).hex()
@@ -152,6 +158,9 @@ def main():
 
     # Test 5: Division by zero — reverts
     print("\n[Test 5] Division by zero")
+    tx = cli.send_transaction_auto(pk, attack_addr, StepType.kContractGasPrefund, prefund=20_000_000)
+    cli.wait_for_receipt(tx)
+    time.sleep(1)
     inp = sel("divByZero(uint256)") + eth_abi.encode(["uint256"], [10]).hex()
     rc = safe_tx(cli, pk, attack_addr, inp, "divByZero")
     status = rc.get("status", -1) if rc else -1
@@ -159,6 +168,9 @@ def main():
 
     # Test 6: Overflow — reverts
     print("\n[Test 6] Overflow")
+    tx = cli.send_transaction_auto(pk, attack_addr, StepType.kContractGasPrefund, prefund=20_000_000)
+    cli.wait_for_receipt(tx)
+    time.sleep(1)
     inp = sel("overflow()")
     rc = safe_tx(cli, pk, attack_addr, inp, "overflow")
     status = rc.get("status", -1) if rc else -1
@@ -166,6 +178,9 @@ def main():
 
     # Test 7: Underflow — reverts
     print("\n[Test 7] Underflow")
+    tx = cli.send_transaction_auto(pk, attack_addr, StepType.kContractGasPrefund, prefund=20_000_000)
+    cli.wait_for_receipt(tx)
+    time.sleep(1)
     inp = sel("underflow()")
     rc = safe_tx(cli, pk, attack_addr, inp, "underflow")
     status = rc.get("status", -1) if rc else -1

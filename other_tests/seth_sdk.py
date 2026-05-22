@@ -854,6 +854,7 @@ class SethClient:
         txh, resp = _build_and_send(nonce)
         body = resp.text[:200]
         print(f"[send_tx] status={resp.status_code} body={body}")
+        print(f"[tx_hash] {txh.hex()}")
 
         # On nonce invalid: poll until nonce changes (previous tx confirmed), then resend
         if 'kTxUserNonceInvalid' in body:
@@ -1192,6 +1193,7 @@ class SethClient:
         if prefund: data["prefund"] = str(prefund)
 
         requests.post(self.gmssl_url, data=data, verify=self.verify_ssl)
+        print(f"[tx_hash] {txh_hex}")
         return txh_hex
 
 

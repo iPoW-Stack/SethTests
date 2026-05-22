@@ -104,7 +104,7 @@ def main():
                                     input_hex=inp, prefund=5_000_000)
     rc = cli.wait_for_receipt(tx)
     assert_true("revert status != 0", rc and rc.get("status") != 0)
-    assert_true("revert msg = kConsensusRevert", rc and rc.get("msg") == "kConsensusRevert")
+    assert_true("revert status = kConsensusRevert", rc and rc.get("status") == 5031)
 
     # Test 2: Require failure
     print("\n[Test 2] Require failure")

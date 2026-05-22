@@ -126,17 +126,21 @@ def get_test_functions(module):
                 test_functions.append((name, func))
     return test_functions
 
-def run_single_test(test_name, test_func, private_key, test_id, private_keys=None):
+def _addresses_for_keys(ctx, private_keys):
+    return [ctx.client.get_address(key) for key in private_keys]
+
+def _recipient_keys(private_keys, active_keys):
+    recipients = [key for key in private_keys if key not in set(active_keys)]
+    return recipients or private_keys
+
+def run_single_test(test_name, test_func, private_key, test_id, recipient_keys=None):
     """Run a single test with a specific private key."""
     try:
         # Create a new context with the specific private key
         ctx = SethTestContext()
         ctx.ecdsa_key = private_key
         ctx.ecdsa_addr = ctx.client.get_address(private_key)
-        ctx.known_addresses = [
-            ctx.client.get_address(key)
-            for key in (private_keys or [])
-        ]
+        ctx.known_addresses = _addresses_for_keys(ctx, recipient_keys or [])
         
         # Debug: Print private key and generated address
         print(f"\n{Color.BLUE}▶ [{test_id}] {test_name} (Key: {private_key[:8]}...){Color.END}")
@@ -164,7 +168,7 @@ def run_module_concurrent(module, private_keys, max_workers):
             ctx = SethTestContext()
             ctx.ecdsa_key = private_keys[0]
             ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
-            ctx.known_addresses = [ctx.client.get_address(key) for key in private_keys]
+            ctx.known_addresses = _addresses_for_keys(ctx, _recipient_keys(private_keys, [ctx.ecdsa_key]))
             import config
             old_key = config.TEST_ECDSA_KEY
             try:
@@ -187,15 +191,17 @@ def run_module_concurrent(module, private_keys, max_workers):
         private_key = private_keys[i % len(private_keys)]
         test_id = f"T{i+1:03d}"
         tasks.append((test_name, test_func, private_key, test_id))
+    recipient_keys = _recipient_keys(private_keys, [private_key for _, _, private_key, _ in tasks])
     
     print(f"\n{Color.BOLD}Running {len(tasks)} tests concurrently with {min(max_workers, len(tasks))} workers{Color.END}")
     print(f"Using {len(private_keys)} private keys in rotation")
+    print(f"Using {len(recipient_keys)} private keys as recipient-only pool")
     
     # Execute tests concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for test_name, test_func, private_key, test_id in tasks:
-            future = executor.submit(run_single_test, test_name, test_func, private_key, test_id, private_keys)
+            future = executor.submit(run_single_test, test_name, test_func, private_key, test_id, recipient_keys)
             futures.append(future)
         
         # Wait for all tests to complete

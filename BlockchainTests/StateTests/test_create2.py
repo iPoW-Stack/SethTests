@@ -23,6 +23,10 @@ from Crypto.Hash import keccak
 
 passed = 0
 failed = 0
+CONTRACT_CREATE_PREFUND = 200_000_000
+CONTRACT_EXEC_PREFUND = 200_000_000
+FACTORY_BALANCE = 500_000_000
+FACTORY_EXTRA_PREFUND = 500_000_000
 
 # Same contract as seth3.py PROBE_CREATE2_FACTORY_SOL
 CREATE2_FACTORY_SOL = """
@@ -124,22 +128,22 @@ def main():
     factory_contract = next(v for k, v in comp.items() if "Create2Factory" in k)
     factory_bin = factory_contract["bin"].replace("0x", "").strip()
 
-    # Deploy factory with value (matching seth3.py: amount=100000000)
+    # Deploy factory with enough balance for child CREATE2 value and Seth execution prefund.
     print("\n[Deploy] Create2Factory")
     factory_salt = secrets.token_hex(31) + "f4"
     factory_addr = calc_create2(sender, factory_salt, factory_bin)
     print(f"  factory: {factory_addr}")
 
     tx = cli.send_transaction_auto(pk, factory_addr, StepType.kCreateContract,
-                                    amount=100_000_000,
-                                    contract_code=factory_bin, prefund=10_000_000)
+                                    amount=FACTORY_BALANCE,
+                                    contract_code=factory_bin, prefund=CONTRACT_CREATE_PREFUND)
     rc = cli.wait_for_receipt(tx)
     assert_true("factory deploy", rc and rc.get("status") == 0)
 
     # Prefund factory generously (CREATE2 needs value=10000000 per child)
     print("  prefunding factory...")
     tx = cli.send_transaction_auto(pk, factory_addr, StepType.kContractGasPrefund,
-                                    prefund=50_000_000)
+                                    prefund=FACTORY_EXTRA_PREFUND)
     cli.wait_for_receipt(tx)
 
     # Test 1: Predict address
@@ -155,7 +159,7 @@ def main():
     print(f"\n[Test 2] Deploy via CREATE2 (salt={test_salt})")
     inp = selector("deploy(uint256)") + eth_abi.encode(["uint256"], [test_salt]).hex()
     tx = cli.send_transaction_auto(pk, factory_addr, StepType.kContractExcute,
-                                    input_hex=inp, prefund=10_000_000)
+                                    input_hex=inp, prefund=CONTRACT_EXEC_PREFUND)
     rc = cli.wait_for_receipt(tx)
     deploy_ok = rc and rc.get("status") == 0
     assert_true("CREATE2 deploy success", deploy_ok)

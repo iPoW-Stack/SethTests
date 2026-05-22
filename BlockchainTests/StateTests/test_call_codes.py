@@ -23,6 +23,9 @@ from Crypto.Hash import keccak
 passed = 0
 failed = 0
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTRACT_CREATE_PREFUND = 200_000_000
+CONTRACT_EXTRA_PREFUND = 500_000_000
+CONTRACT_EXEC_PREFUND = 200_000_000
 
 
 def assert_eq(name, got, expected):
@@ -77,13 +80,13 @@ def deploy_contract(cli, pk, sender, bytecode, label, amount=0):
     addr = calc_create2(sender, salt, bytecode)
     print(f"  {label}: {addr}")
     tx = cli.send_transaction_auto(pk, addr, StepType.kCreateContract,
-                                    amount=amount, contract_code=bytecode, prefund=10_000_000)
+                                    amount=amount, contract_code=bytecode, prefund=CONTRACT_CREATE_PREFUND)
     rc = cli.wait_for_receipt(tx)
     ok = rc and rc.get("status") == 0
     if not ok:
         print(f"  deploy FAILED: {rc}")
     # Prefund
-    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=10_000_000)
+    tx = cli.send_transaction_auto(pk, addr, StepType.kContractGasPrefund, prefund=CONTRACT_EXTRA_PREFUND)
     cli.wait_for_receipt(tx)
     return addr, ok
 
@@ -122,7 +125,7 @@ def main():
     print("\n[Test 1] CALL: setValue(777)")
     inp = sel("testCall(uint256)") + eth_abi.encode(["uint256"], [777]).hex()
     tx = cli.send_transaction_auto(pk, caller_addr, StepType.kContractExcute,
-                                    input_hex=inp, prefund=5_000_000)
+                                    input_hex=inp, prefund=CONTRACT_EXEC_PREFUND)
     rc = cli.wait_for_receipt(tx)
     assert_true("call success", rc and rc.get("status") == 0)
 
@@ -144,7 +147,7 @@ def main():
     print("\n[Test 4] CALL: msg.sender = caller contract")
     inp = sel("testCallSender()")
     tx = cli.send_transaction_auto(pk, caller_addr, StepType.kContractExcute,
-                                    input_hex=inp, prefund=5_000_000)
+                                    input_hex=inp, prefund=CONTRACT_EXEC_PREFUND)
     rc = cli.wait_for_receipt(tx)
     assert_true("callSender success", rc and rc.get("status") == 0)
 
@@ -155,7 +158,7 @@ def main():
     print("\n[Test 5] CALL: handle callee revert")
     inp = sel("testCallWithRevert()")
     tx = cli.send_transaction_auto(pk, caller_addr, StepType.kContractExcute,
-                                    input_hex=inp, prefund=5_000_000)
+                                    input_hex=inp, prefund=CONTRACT_EXEC_PREFUND)
     rc = cli.wait_for_receipt(tx)
     # The outer call should succeed (it catches the revert)
     assert_true("outer call succeeds", rc and rc.get("status") == 0)
@@ -164,7 +167,7 @@ def main():
     print("\n[Test 6] DELEGATECALL")
     inp = sel("testDelegateCall(uint256)") + eth_abi.encode(["uint256"], [999]).hex()
     tx = cli.send_transaction_auto(pk, caller_addr, StepType.kContractExcute,
-                                    input_hex=inp, prefund=5_000_000)
+                                    input_hex=inp, prefund=CONTRACT_EXEC_PREFUND)
     rc = cli.wait_for_receipt(tx)
     assert_true("delegatecall success", rc and rc.get("status") == 0)
 

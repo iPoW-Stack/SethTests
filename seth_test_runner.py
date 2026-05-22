@@ -134,7 +134,11 @@ def run_single_test(test_name, test_func, private_key, test_id):
         ctx.ecdsa_key = private_key
         ctx.ecdsa_addr = ctx.client.get_address(private_key)
         
+        # Debug: Print private key and generated address
         print(f"\n{Color.BLUE}▶ [{test_id}] {test_name} (Key: {private_key[:8]}...){Color.END}")
+        print(f"  Debug - Private Key: {private_key}")
+        print(f"  Debug - Generated Address: {ctx.ecdsa_addr}")
+        print(f"  Debug - Address Length: {len(ctx.ecdsa_addr)}")
         
         # Run the test
         test_func(ctx)

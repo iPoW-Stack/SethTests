@@ -161,7 +161,7 @@ def test_nonce_and_balance_move_forward_together(ctx: SethTestContext):
 
     # Retry balance query up to 60 seconds
     balance_after = balance_before
-    for _ in range(30):
+    for _ in range(60):
         balance_after = ctx.get_balance(dest)
         if balance_after > balance_before:
             break

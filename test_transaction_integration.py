@@ -186,7 +186,7 @@ def test_contract_balance_withdraw_roundtrip(ctx: SethTestContext):
 
     # Retry balance query up to 60 seconds
     after = before
-    for _ in range(30):
+    for _ in range(60):
         after = ctx.get_balance(recipient)
         if after > before:
             break

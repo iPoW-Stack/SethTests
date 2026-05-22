@@ -116,6 +116,8 @@ def test_simple_transfer(ctx: SethTestContext):
 def test_transfer_zero_value(ctx: SethTestContext):
     """Test zero-value transfer (ref: stArgsZeroOneBalance)."""
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    # Wait briefly for any prior transfers to settle before capturing baseline
+    time.sleep(3)
     balance_before = ctx.get_balance(dest)
     receipt = ctx.w3.seth.send_transaction(
         {'to': dest, 'value': 0}, ctx.ecdsa_key

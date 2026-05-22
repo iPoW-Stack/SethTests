@@ -183,14 +183,14 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
     addr = contract.address
 
     # Initial deposit
+    initial_pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
     contract.prefund(5000000, ctx.ecdsa_key)
     count = 0
-    while count < 30:
+    while count < 60:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
-        if pp >= 5000000:
+        if pp >= initial_pp + 5000000:
             break
-
         count += 1
 
     pp_before = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
@@ -198,9 +198,9 @@ def test_prefund_with_call_deposit(ctx: SethTestContext):
     # Add extra prefund first, then call
     extra_prepay = 1000000
     contract.prefund(extra_prepay, ctx.ecdsa_key)
-    # Wait for extra prefund to arrive
+    # Wait for extra prefund to arrive (must exceed pp_before, not just 5000000)
     target = pp_before + extra_prepay
-    for _ in range(30):
+    for _ in range(60):
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= target:
@@ -238,7 +238,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     # Deposit sufficient prefund
     contract.prefund(20000000, ctx.ecdsa_key)
     count = 0
-    while count < 30:
+    while count < 60:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + 20000000:
@@ -248,7 +248,7 @@ def test_prefund_heavy_gas_usage(ctx: SethTestContext):
     # Second deposit
     contract.prefund(20000000, ctx.ecdsa_key)
     count = 0
-    while count < 30:
+    while count < 60:
         time.sleep(1)
         pp = get_prefund_balance(ctx, addr, ctx.ecdsa_addr)
         if pp >= initial_pp + 40000000:

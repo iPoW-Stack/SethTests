@@ -92,6 +92,12 @@ class SethTestContext:
         self.ecdsa_key = _cfg.TEST_ECDSA_KEY
         self.ecdsa_addr = self.client.get_address(_cfg.TEST_ECDSA_KEY)
         self.salt_counter = 0
+        
+        # Debug: Print private key and generated address
+        print(f"{Color.YELLOW}Debug - SethTestContext Init:{Color.END}")
+        print(f"  Private Key: {self.ecdsa_key}")
+        print(f"  Generated Address: {self.ecdsa_addr}")
+        print(f"  Address Length: {len(self.ecdsa_addr)}")
 
     def next_salt(self) -> str:
         self.salt_counter += 1

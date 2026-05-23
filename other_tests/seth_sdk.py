@@ -822,13 +822,16 @@ class SethClient:
         # original ordering so server lookups succeed.
         to_clean = to.lower().replace('0x', '') if isinstance(to, str) else to
         nonce_addr = to_clean + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
-        try:
-            r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
-            nonce = int(r.get("nonce", 0)) + 1
-        except: nonce = 1
 
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
         pub = sk.verifying_key.to_string("uncompressed").hex()
+
+        def _query_next_nonce():
+            try:
+                r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
+                return int(r.get("nonce", 0)) + 1
+            except Exception:
+                return 1
 
         def _build_and_send(_nonce):
             msg = bytearray()
@@ -851,31 +854,20 @@ class SethClient:
             _resp = requests.post(self.tx_url, data=_data, verify=self.verify_ssl)
             return _txh, _resp
 
-        txh, resp = _build_and_send(nonce)
-        body = resp.text[:200]
-        print(f"[send_tx] status={resp.status_code} body={body}")
-        print(f"[tx_hash] {txh.hex()}")
+        last_body = ""
+        for attempt in range(10):
+            nonce = _query_next_nonce()
+            txh, resp = _build_and_send(nonce)
+            body = resp.text[:200]
+            last_body = body
+            prefix = "[send_tx]" if attempt == 0 else f"[send_tx retry {attempt}]"
+            print(f"{prefix} nonce={nonce} status={resp.status_code} body={body}")
+            if resp.status_code == 200 and body.strip() == "ok":
+                print(f"[tx_hash] {txh.hex()}")
+                return txh.hex()
+            time.sleep(min(1 + attempt, 5))
 
-        # On nonce invalid: poll until nonce changes (previous tx confirmed), then resend
-        if 'kTxUserNonceInvalid' in body:
-            old_nonce = nonce - 1  # the nonce we queried before +1
-            for retry in range(30):
-                time.sleep(1)
-                try:
-                    r2 = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
-                    cur = int(r2.get("nonce", 0))
-                except:
-                    continue
-                if cur != old_nonce:
-                    nonce = cur + 1
-                    txh, resp = _build_and_send(nonce)
-                    body = resp.text[:200]
-                    print(f"[send_tx retry] nonce={nonce} status={resp.status_code} body={body}")
-                    if 'kTxUserNonceInvalid' not in body:
-                        break
-                    old_nonce = cur
-
-        return txh.hex()
+        raise RuntimeError(f"send transaction failed after retries: {last_body}")
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None,
                          timeout: int = 120, not_exists_retries: int = 10) -> dict:

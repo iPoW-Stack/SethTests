@@ -821,38 +821,57 @@ class SethClient:
 
     def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         my_addr = self.get_address(pk_hex)
-        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
-        try:
-            r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
-            nonce = int(r.get("nonce", 0)) + 1
-        except: nonce = 1
+        to_clean = to.lower().replace('0x', '') if isinstance(to, str) else to
+        nonce_addr = to_clean + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
 
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
         pub = sk.verifying_key.to_string("uncompressed").hex()
 
-        msg = bytearray()
-        msg.extend(struct.pack('<Q', nonce))
-        msg.extend(bytes.fromhex(pub))
-        msg.extend(bytes.fromhex(to.replace('0x','')))
-        msg.extend(struct.pack('<Q', amount))
-        msg.extend(struct.pack('<Q', 50000000))
-        msg.extend(struct.pack('<Q', 1))
-        msg.extend(struct.pack('<Q', int(step)))
-        if contract_code: msg.extend(bytes.fromhex(contract_code))
-        if input_hex: msg.extend(bytes.fromhex(input_hex))
-        if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+        def _query_next_nonce():
+            try:
+                r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
+                return int(r.get("nonce", 0)) + 1
+            except Exception:
+                return 1
 
-        txh = keccak.new(digest_bits=256).update(msg).digest()
-        sig = sk.sign_digest_deterministic(txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-        
-        data = {"nonce": str(nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "50000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0"}
-        if contract_code: data["bytes_code"] = contract_code
-        if input_hex: data["input"] = input_hex
-        if prefund: data["prefund"] = str(prefund)
-        
-        resp = requests.post(self.tx_url, data=data, verify=self.verify_ssl)
-        print(f"[send_tx] status={resp.status_code} body={resp.text[:200]}")
-        return txh.hex()
+        def _build_and_send(_nonce):
+            msg = bytearray()
+            msg.extend(struct.pack('<Q', _nonce))
+            msg.extend(bytes.fromhex(pub))
+            msg.extend(bytes.fromhex(to_clean))
+            msg.extend(struct.pack('<Q', amount))
+            msg.extend(struct.pack('<Q', 50000000))
+            msg.extend(struct.pack('<Q', 1))
+            msg.extend(struct.pack('<Q', int(step)))
+            if contract_code: msg.extend(bytes.fromhex(contract_code))
+            if input_hex: msg.extend(bytes.fromhex(input_hex))
+            if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+
+            txh = keccak.new(digest_bits=256).update(msg).digest()
+            sig = sk.sign_digest_deterministic(txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
+
+            data = {"nonce": str(_nonce), "pubkey": pub, "to": to_clean, "amount": str(amount), "gas_limit": "50000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0"}
+            if contract_code: data["bytes_code"] = contract_code
+            if input_hex: data["input"] = input_hex
+            if prefund: data["prefund"] = str(prefund)
+
+            resp = requests.post(self.tx_url, data=data, verify=self.verify_ssl)
+            return txh, resp
+
+        last_body = ""
+        for attempt in range(10):
+            nonce = _query_next_nonce()
+            txh, resp = _build_and_send(nonce)
+            body = resp.text[:200]
+            last_body = body
+            prefix = "[send_tx]" if attempt == 0 else f"[send_tx retry {attempt}]"
+            print(f"{prefix} nonce={nonce} status={resp.status_code} body={body}")
+            if resp.status_code == 200 and body.strip() == "ok":
+                print(f"[tx_hash] {txh.hex()}")
+                return txh.hex()
+            time.sleep(min(1 + attempt, 5))
+
+        raise RuntimeError(f"send transaction failed after retries: {last_body}")
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None,
                          timeout: int = 120, not_exists_retries: int = 10) -> dict:

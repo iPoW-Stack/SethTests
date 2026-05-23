@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import os
+import argparse
 import secrets
 import time
 from eth_utils import to_checksum_address
@@ -1336,11 +1337,12 @@ def test_gmssl_contract_flow(w3, GM_KEY):
 def gmssl_sign_test():
     IP = os.environ.get("SETH_HOST", "127.0.0.1")
     PORT = int(os.environ.get("SETH_PORT", "23001"))
+    KEY = os.environ.get("DEPLOYER_PK", "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     w3 = SethWeb3Mock(IP, PORT)
-    MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
+    MY = w3.client.get_address(KEY)
     test_transfer(
-        w3, MY, 
-        "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6", 
+        w3, MY,
+        KEY,
         "19b46cb80e027a99ab41d60e68b8a8a096f50869")
     
     GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
@@ -2897,7 +2899,7 @@ def oqs_sign_test():
     # ── Fund OQS address from ECDSA account before running OQS tests ──────
     # OQS addresses need native tokens to pay for gas. Transfer from the
     # standard ECDSA funder account and wait for the balance to arrive.
-    ECDSA_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    ECDSA_KEY = os.environ.get("DEPLOYER_PK", "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     fund_amount = 500_000_000
     print(f"\n[OQS Setup] Funding OQS address {MY_OQS[:16]}... with {fund_amount} from ECDSA account")
     fund_receipt = w3.seth.send_transaction({'to': MY_OQS, 'value': fund_amount}, ECDSA_KEY)
@@ -3411,11 +3413,34 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("  Demo complete.")
     print("=" * 60)
     
+SETH3_CASES = {
+    "ws": lambda: demo_ws_subscribe(
+        os.environ.get("SETH_HOST", "127.0.0.1"),
+        int(os.environ.get("SETH_WS_PORT", "33001")),
+    ),
+    "ecdsa": ecdsa_sign_test,
+    "oqs": oqs_sign_test,
+    "gmssl": gmssl_sign_test,
+}
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Seth3 integration test groups")
+    parser.add_argument(
+        "--case",
+        choices=[*SETH3_CASES.keys(), "all"],
+        default="all",
+        help="Run one Seth3 group or all groups sequentially",
+    )
+    args = parser.parse_args()
+
+    cases = SETH3_CASES.keys() if args.case == "all" else [args.case]
+    for case in cases:
+        print("\n" + "=" * 60)
+        print(f"  seth3 case: {case}")
+        print("=" * 60)
+        SETH3_CASES[case]()
+
+
 if __name__ == "__main__":
-    import os
-    _host = os.environ.get("SETH_HOST", "127.0.0.1")
-    _ws_port = int(os.environ.get("SETH_WS_PORT", "33001"))
-    demo_ws_subscribe(_host, _ws_port)
-    ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
+    main()

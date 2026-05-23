@@ -25,21 +25,25 @@ OTHER_TESTS = [
     ("other_tests/test_cross_shard_call.py", "cross_shard_call", [], 300),
     ("other_tests/test_contract_chain_demo.py", "contract_chain", [], 600),
     ("other_tests/amm.py", "amm", ["--users", "2"], 600),
-    ("other_tests/seth3.py", "seth3", [], 900),
+    ("other_tests/seth3.py", "seth3_ws", ["--case", "ws"], 300),
+    ("other_tests/seth3.py", "seth3_ecdsa", ["--case", "ecdsa"], 600),
+    ("other_tests/seth3.py", "seth3_oqs", ["--case", "oqs"], 300),
+    ("other_tests/seth3.py", "seth3_gmssl", ["--case", "gmssl"], 240),
 ]
 
 
 def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int, env: dict, private_key: str | None = None):
     """Run a test script from other_tests/ as subprocess."""
     import config
+    import time
     path = os.path.join(SCRIPT_DIR, rel_path)
     if not os.path.exists(path):
         results.record_skip(f"other_{label}", "file not found")
         return
 
     try:
-        # seth3.py doesn't accept --host/--port/--key args, run it directly
-        if label == "seth3":
+        # seth3.py reads host/port/key from env and supports --case splitting.
+        if label.startswith("seth3"):
             cmd = [sys.executable, path] + extra_args
         else:
             key = private_key or config.TEST_ECDSA_KEY
@@ -48,6 +52,8 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
                    "--port", str(config.SETH_PORT),
                    "--key", key] + extra_args
 
+        print(f"  ▶ other_{label}: start ({os.path.basename(rel_path)} {' '.join(extra_args)})")
+        started = time.time()
         r = subprocess.run(
             cmd,
             timeout=timeout,
@@ -55,6 +61,7 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
             text=True,
             env=env,
         )
+        elapsed = time.time() - started
 
         output = r.stdout + r.stderr
 
@@ -94,13 +101,13 @@ def _run_other_script(rel_path: str, label: str, extra_args: list, timeout: int,
         total_count = passed_count + failed_count
 
         if r.returncode == 0:
-            detail = f"{passed_count} passed" if total_count > 0 else "ok"
+            detail = f"{passed_count} passed, {elapsed:.1f}s" if total_count > 0 else f"ok, {elapsed:.1f}s"
             # Add extra counts beyond the 1 that record_pass will add
             if passed_count > 1:
                 results.add_counts(passed=passed_count - 1)
             results.record_pass(f"other_{label} ({detail})")
         else:
-            detail = f"{failed_count} failed, {passed_count} passed, exit={r.returncode}"
+            detail = f"{failed_count} failed, {passed_count} passed, exit={r.returncode}, {elapsed:.1f}s"
             if passed_count > 0:
                 results.add_counts(passed=passed_count)
             if failed_count > 1:

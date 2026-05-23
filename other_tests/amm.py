@@ -245,6 +245,15 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     print("  AMM Multi-User Demo — Same-Shard Atomic Execution")
     print("=" * 64)
 
+    t_start = time.time()
+    t_phase = t_start
+
+    def mark(label: str):
+        nonlocal t_phase
+        now = time.time()
+        print(f"    [timing] {label}: phase={now - t_phase:.1f}s total={now - t_start:.1f}s")
+        t_phase = now
+
     salt = secrets.token_hex(31)
     deployer_ck = _ck(deployer_addr)
 
@@ -307,6 +316,7 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     ra, rb = _print_reserves(amm)
     assert ra == 500_000 and rb == 500_000
     print(f"    ✅ Initial liquidity: A={ra}, B={rb}")
+    mark("protocol deployed and seeded")
 
     # ══════════════════════════════════════════════════════════════════════
     # Phase 2: Create independent trader accounts
@@ -387,6 +397,8 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
             f"❌ {name} AMMPool prefund mismatch: expected >={user_prefund}, got {pf_amm}"
         print(f"    ✅ Prefund verified — {name} ready to trade")
 
+    mark("trader accounts prepared")
+
     # ══════════════════════════════════════════════════════════════════════
     # Phase 3: Each user trades independently
     # ══════════════════════════════════════════════════════════════════════
@@ -447,6 +459,8 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
         bal_b = user_token_b.functions.balanceOf(user_ck).call()[0]
         print(f"\n  [D] {name} balances: TokenA={bal_a}, TokenB={bal_b}")
 
+    mark("trading complete")
+
     # ══════════════════════════════════════════════════════════════════════
     # Phase 4: Cleanup — all users refund prefund
     # ══════════════════════════════════════════════════════════════════════
@@ -474,6 +488,7 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     token_b.refund(deployer_key)
     amm.refund(deployer_key)
     print(f"    ✅ Deployer refunded")
+    mark("refunds complete")
 
     # ══════════════════════════════════════════════════════════════════════
     # Final Summary

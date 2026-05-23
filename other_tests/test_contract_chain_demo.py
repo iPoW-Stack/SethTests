@@ -286,7 +286,7 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
         print(f"  ⏳ Waiting for address to be active (max {max_wait}s)...")
         
         start_time = time.time()
-        check_interval = 2  # Check every 2 seconds
+        check_interval = 1
         
         while time.time() - start_time < max_wait:
             try:
@@ -351,7 +351,7 @@ def query_address_info(w3, address: str, max_wait: int = 60):
     clean_addr = address.replace('0x', '')
     
     start_time = time.time()
-    check_interval = 2
+    check_interval = 1
     
     while time.time() - start_time < max_wait:
         try:

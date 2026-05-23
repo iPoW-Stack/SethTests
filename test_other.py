@@ -26,7 +26,10 @@ OTHER_TESTS = [
     ("other_tests/test_contract_chain_demo.py", "contract_chain", [], 600),
     ("other_tests/amm.py", "amm", ["--users", "2"], 600),
     ("other_tests/seth3.py", "seth3_ws", ["--case", "ws"], 300),
-    ("other_tests/seth3.py", "seth3_ecdsa", ["--case", "ecdsa"], 600),
+    ("other_tests/seth3.py", "seth3_ecdsa_core", ["--case", "ecdsa_core"], 360),
+    ("other_tests/seth3.py", "seth3_ecdsa_contracts", ["--case", "ecdsa_contracts"], 360),
+    ("other_tests/seth3.py", "seth3_ecdsa_iweth", ["--case", "ecdsa_iweth"], 360),
+    ("other_tests/seth3.py", "seth3_ecdsa_misc", ["--case", "ecdsa_misc"], 360),
     ("other_tests/seth3.py", "seth3_oqs", ["--case", "oqs"], 300),
     ("other_tests/seth3.py", "seth3_gmssl", ["--case", "gmssl"], 240),
 ]

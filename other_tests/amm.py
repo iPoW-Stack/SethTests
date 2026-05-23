@@ -172,29 +172,29 @@ def _print_reserves(amm):
     return r
 
 
-def _wait_balance(token, addr_ck, expected, label="", retries=30):
+def _wait_balance(token, addr_ck, expected, label="", retries=60):
     """Poll token balance until it matches expected value."""
     for i in range(retries):
         bal = token.functions.balanceOf(addr_ck).call()[0]
         if bal == expected:
             return bal
-        time.sleep(2)
+        time.sleep(1)
     bal = token.functions.balanceOf(addr_ck).call()[0]
     return bal
 
 
-def _wait_prefund(contract, user_addr, expected, label="", retries=30):
+def _wait_prefund(contract, user_addr, expected, label="", retries=60):
     """Poll prefund balance until it reaches at least the expected value."""
     for i in range(retries):
         pf = contract.get_prefund(user_addr)
         if pf >= expected:
             return pf
-        time.sleep(2)
+        time.sleep(1)
     pf = contract.get_prefund(user_addr)
     return pf
 
 
-def _wait_account_exists(client, addr, label="", retries=30):
+def _wait_account_exists(client, addr, label="", retries=60):
     """Poll until the account address is registered on chain and queryable."""
     for i in range(retries):
         try:
@@ -208,7 +208,7 @@ def _wait_account_exists(client, addr, label="", retries=30):
                 return True
         except Exception:
             pass
-        time.sleep(2)
+        time.sleep(1)
     # Final check — if we got here, try one more time
     try:
         bal = client.get_balance(addr)

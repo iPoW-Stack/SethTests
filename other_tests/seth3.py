@@ -2883,6 +2883,44 @@ def ecdsa_sign_test():
     test_eth_signing(w3, MY, KEY)
 
 
+def _ecdsa_context():
+    ip = os.environ.get("SETH_HOST", "127.0.0.1")
+    port = int(os.environ.get("SETH_PORT", "23001"))
+    key = os.environ.get("DEPLOYER_PK", "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
+    w3 = SethWeb3Mock(ip, port)
+    return w3, w3.client.get_address(key), key
+
+
+def ecdsa_core_test():
+    w3, my, key = _ecdsa_context()
+    test_contract_call_contract(w3, my, key)
+    test_transfer(w3, my, key, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    test_library_with_contrcat(w3, my, key)
+    test_ecdsa_prefund_full_flow(w3, my, key)
+    test_contract_selfdestruct(w3, my, key)
+    test_create2_assembly_deployment(w3, my, key)
+
+
+def ecdsa_contracts_test():
+    w3, my, key = _ecdsa_context()
+    test_upgradeable_contract(w3, my, key)
+    test_amm_same_shard(w3, my, key)
+    test_struct_demo(w3, my, key)
+
+
+def ecdsa_iweth_test():
+    w3, my, key = _ecdsa_context()
+    test_iweth9_existing_contract(w3, my, key)
+    test_iweth9_demo(w3, my, key)
+
+
+def ecdsa_misc_test():
+    w3, my, key = _ecdsa_context()
+    test_ripemd160_precompile(w3, my, key)
+    test_selfbalance(w3, my, key)
+    test_eth_signing(w3, my, key)
+
+
 def oqs_sign_test():
     # Base configuration
     IP = os.environ.get("SETH_HOST", "127.0.0.1")
@@ -3419,6 +3457,10 @@ SETH3_CASES = {
         int(os.environ.get("SETH_WS_PORT", "33001")),
     ),
     "ecdsa": ecdsa_sign_test,
+    "ecdsa_core": ecdsa_core_test,
+    "ecdsa_contracts": ecdsa_contracts_test,
+    "ecdsa_iweth": ecdsa_iweth_test,
+    "ecdsa_misc": ecdsa_misc_test,
     "oqs": oqs_sign_test,
     "gmssl": gmssl_sign_test,
 }

@@ -43,22 +43,22 @@ contract EncoderA {
 
 def _ck(addr): return to_checksum_address("0x" + addr.replace("0x", ""))
 
-def _wait_prefund(contract, user_addr, expected, retries=30):
+def _wait_prefund(contract, user_addr, expected, retries=60):
     for _ in range(retries):
         pf = contract.get_prefund(user_addr)
         if pf >= expected:
             return pf
-        time.sleep(2)
+        time.sleep(1)
     return contract.get_prefund(user_addr)
 
-def _wait_account(client, addr, retries=30):
+def _wait_account(client, addr, retries=60):
     for _ in range(retries):
         try:
             if client.get_balance(addr) > 0:
                 return True
         except Exception:
             pass
-        time.sleep(2)
+        time.sleep(1)
     return False
 
 def test_cross_shard_call(w3, deployer_addr, deployer_key):

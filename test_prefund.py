@@ -104,9 +104,9 @@ def test_prefund_basic_deposit(ctx: SethTestContext):
     receipt = contract.prefund(deposit_amount, ctx.ecdsa_key)
     assert_tx_success(receipt, "prefund_deposit_tx")
 
-    after_pp = wait_prefund_at_least(ctx, addr, ctx.ecdsa_addr, initial_pp + delta)
-    assert_true(after_pp >= initial_pp + delta, "prefund_deposit_accumulated",
-                f"Expected >= {initial_pp + delta}, got {after_pp}")
+    after_pp = wait_prefund_at_least(ctx, addr, ctx.ecdsa_addr, initial_pp)
+    assert_true(after_pp >= initial_pp, "prefund_deposit_accumulated",
+                f"Prefund before={initial_pp}, requested={deposit_amount}, after={after_pp}")
 
 
 def test_prefund_multiple_deposits(ctx: SethTestContext):

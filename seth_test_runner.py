@@ -2,7 +2,6 @@
 from __future__ import annotations
 import sys, os, argparse, time, json
 import concurrent.futures
-from threading import Lock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import SETH_HOST, SETH_PORT, TEST_ECDSA_KEY
 from utils import SethTestContext, Color, print_section, results
@@ -158,33 +157,23 @@ def run_single_test(test_name, test_func, private_key, test_id, recipient_keys=N
         import traceback
         traceback.print_exc()
 
-def run_module_concurrent(module, private_keys, max_workers):
+def run_module_concurrent(module, private_keys, max_workers, module_index=0):
     """Run all tests in a module concurrently with different private keys."""
     test_functions = get_test_functions(module)
+    module_name = getattr(module, "__name__", "module")
 
     if not test_functions:
         if hasattr(module, "run_all_concurrent"):
-            print(f"{Color.YELLOW}No test functions found in module; running module wrapper concurrently{Color.END}")
+            print(f"{Color.YELLOW}{module_name}: running module wrapper concurrently{Color.END}")
             ctx = SethTestContext()
-            ctx.ecdsa_key = private_keys[0]
+            ctx.ecdsa_key = private_keys[module_index % len(private_keys)]
             ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
             ctx.known_addresses = _addresses_for_keys(ctx, _recipient_keys(private_keys, [ctx.ecdsa_key]))
-            import config
-            old_key = config.TEST_ECDSA_KEY
-            try:
-                config.TEST_ECDSA_KEY = ctx.ecdsa_key
-                os.environ["SETH_TEST_KEY"] = ctx.ecdsa_key
-                module.run_all_concurrent(ctx, max_workers, private_keys=private_keys)
-            finally:
-                config.TEST_ECDSA_KEY = old_key
-                if old_key:
-                    os.environ["SETH_TEST_KEY"] = old_key
-                else:
-                    os.environ.pop("SETH_TEST_KEY", None)
+            module.run_all_concurrent(ctx, max_workers, private_keys=private_keys)
         elif hasattr(module, "run_all"):
-            print(f"{Color.YELLOW}No test functions found in module; running module wrapper sequentially{Color.END}")
+            print(f"{Color.YELLOW}{module_name}: running module wrapper sequentially{Color.END}")
             ctx = SethTestContext()
-            ctx.ecdsa_key = private_keys[0]
+            ctx.ecdsa_key = private_keys[module_index % len(private_keys)]
             ctx.ecdsa_addr = ctx.client.get_address(ctx.ecdsa_key)
             ctx.known_addresses = _addresses_for_keys(ctx, _recipient_keys(private_keys, [ctx.ecdsa_key]))
             import config
@@ -206,12 +195,12 @@ def run_module_concurrent(module, private_keys, max_workers):
     # Create test tasks - cycle through private keys
     tasks = []
     for i, (test_name, test_func) in enumerate(test_functions):
-        private_key = private_keys[i % len(private_keys)]
-        test_id = f"T{i+1:03d}"
+        private_key = private_keys[(module_index + i) % len(private_keys)]
+        test_id = f"{module_name}:T{i+1:03d}"
         tasks.append((test_name, test_func, private_key, test_id))
     recipient_keys = _recipient_keys(private_keys, [private_key for _, _, private_key, _ in tasks])
     
-    print(f"\n{Color.BOLD}Running {len(tasks)} tests concurrently with {min(max_workers, len(tasks))} workers{Color.END}")
+    print(f"\n{Color.BOLD}{module_name}: running {len(tasks)} tests concurrently with {min(max_workers, len(tasks))} workers{Color.END}")
     print(f"Using {len(private_keys)} private keys in rotation")
     print(f"Using {len(recipient_keys)} private keys as recipient-only pool")
     
@@ -231,11 +220,21 @@ def run_module_sequential(module, ctx):
 
 def execute_test_phase(modules, private_keys, concurrent, max_workers, ctx):
     """Execute a phase of tests either concurrently or sequentially."""
-    for module in modules:
-        if concurrent and private_keys:
-            run_module_concurrent(module, private_keys, max_workers)
-        else:
+    if not concurrent or not private_keys:
+        for module in modules:
             run_module_sequential(module, ctx)
+        return
+
+    module_workers = min(max_workers, len(modules))
+    print(f"\n{Color.BOLD}Running {len(modules)} modules concurrently with {module_workers} module workers{Color.END}")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=module_workers) as executor:
+        futures = [
+            executor.submit(run_module_concurrent, module, private_keys, max_workers, i)
+            for i, module in enumerate(modules)
+        ]
+        concurrent.futures.wait(futures)
+        for future in futures:
+            future.result()
 
 def main():
     args = parse_args()

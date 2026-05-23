@@ -106,8 +106,7 @@ def run_all(ctx: SethTestContext):
 
 def run_all_concurrent(ctx: SethTestContext, max_workers: int = 4, private_keys: list[str] | None = None):
     print_section("On-chain State Tests (subprocess, concurrent)")
-    key_count = len(private_keys) if private_keys else 1
-    workers = min(max_workers, len(ONCHAIN_TESTS), key_count)
+    workers = min(max_workers, len(ONCHAIN_TESTS))
     print(f"Running {len(ONCHAIN_TESTS)} on-chain scripts with {workers} workers")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:

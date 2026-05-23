@@ -218,9 +218,9 @@ def run_module_sequential(module, ctx):
     """Run all tests in a module sequentially (original behavior)."""
     module.run_all(ctx)
 
-def execute_test_phase(modules, private_keys, concurrent, max_workers, ctx):
+def execute_test_phase(modules, private_keys, run_concurrent, max_workers, ctx):
     """Execute a phase of tests either concurrently or sequentially."""
-    if not concurrent or not private_keys:
+    if not run_concurrent or not private_keys:
         for module in modules:
             run_module_sequential(module, ctx)
         return

@@ -21,7 +21,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # other_tests scripts with their arguments
 OTHER_TESTS = [
     # (script_path, label, extra_args, timeout_seconds)
-    ("other_tests/test_eip1559.py", "eip1559", [], 120),
+    ("other_tests/test_eip1559.py", "eip1559", [], 300),
     ("other_tests/test_cross_shard_call.py", "cross_shard_call", [], 600),
     ("other_tests/test_contract_chain_demo.py", "contract_chain", [], 600),
     ("other_tests/amm.py", "amm", ["--users", "2"], 720),

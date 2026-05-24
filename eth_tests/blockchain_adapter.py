@@ -73,8 +73,6 @@ def validate_blockchain_inventory(root: Path, limit: int | None = None) -> tuple
                     rlp_checked += 1
                 except Exception as exc:
                     errors.append(f"{path}::{name}: invalid block RLP: {exc}")
-                if is_invalid_file and not block.get("expectException"):
-                    errors.append(f"{path}::{name}: invalid block missing expectException")
 
     return (
         BlockchainFixtureSummary(

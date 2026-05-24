@@ -67,6 +67,24 @@ def iter_tgz_members(root: Path, archive_name: str, prefix: str) -> Iterator[Fix
                 yield FixtureRef(prefix.rstrip("/"), name, member.name, archive_name)
 
 
+def iter_tgz_json(root: Path, archive_name: str, prefix: str, limit: int | None = None):
+    archive = root / archive_name
+    if not archive.is_file():
+        return
+    seen = 0
+    with tarfile.open(archive, "r:gz") as tf:
+        for member in tf:
+            if not (member.isfile() and member.name.startswith(prefix) and member.name.endswith(".json")):
+                continue
+            f = tf.extractfile(member)
+            if f is None:
+                continue
+            yield member.name, json.load(f)
+            seen += 1
+            if limit and seen >= limit:
+                return
+
+
 def iter_fixture_inventory(root: Path) -> Iterator[FixtureRef]:
     for suite in ("BasicTests", "TransactionTests", "RLPTests", "BlockchainTests"):
         for path in iter_json_files(root, suite):

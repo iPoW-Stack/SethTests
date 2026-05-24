@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import os
 
 from Crypto.Hash import keccak
 from ecdsa import SECP256k1, SigningKey
@@ -12,6 +13,7 @@ from eth_tests.fixtures import (
     load_json,
 )
 from eth_tests.rlp_adapter import validate_rlp_tests
+from eth_tests.state_adapter import validate_general_state_inventory
 from eth_tests.transaction_adapter import validate_transaction_tests
 from utils import SethTestContext, assert_equal, assert_true, print_section, results, run_test
 
@@ -113,6 +115,20 @@ def test_transaction_fixtures_offline(ctx: SethTestContext):
     assert_equal(errors[:5], [], "eth_txfixtures_offline_validate")
 
 
+def test_general_state_fixtures_inventory(ctx: SethTestContext):
+    """GeneralStateTests fixtures are indexed and mapped to Seth coverage areas."""
+    root = _fixture_root_or_skip("eth_general_state_fixtures_inventory")
+    if root is None:
+        return
+    limit = int(os.environ.get("ETHEREUM_STATE_FIXTURE_LIMIT", "0") or "0") or None
+    summary, errors = validate_general_state_inventory(root, limit=limit)
+    assert_true(summary.files > 0, "eth_statefixtures_files_present", str(summary))
+    assert_true(summary.cases > 0, "eth_statefixtures_cases_present", str(summary))
+    assert_true(summary.mapped_categories > 0, "eth_statefixtures_mapped_categories", str(summary))
+    assert_true(summary.txbytes_checked > 0, "eth_statefixtures_txbytes_checked", str(summary))
+    assert_equal(errors[:5], [], "eth_statefixtures_inventory_validate")
+
+
 def run_all(ctx: SethTestContext):
     print_section("Ethereum/tests Fixture Migration")
     run_test(test_fixture_inventory, ctx)
@@ -122,3 +138,4 @@ def run_all(ctx: SethTestContext):
     run_test(test_basic_crypto_fixture, ctx)
     run_test(test_rlp_fixtures_offline, ctx)
     run_test(test_transaction_fixtures_offline, ctx)
+    run_test(test_general_state_fixtures_inventory, ctx)

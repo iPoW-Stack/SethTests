@@ -45,7 +45,11 @@ def validate_blockchain_inventory(root: Path, limit: int | None = None) -> tuple
         category = _category(path)
         categories[category] += 1
         is_invalid_file = path.startswith("BlockchainTests/InvalidBlocks/")
+        if not isinstance(data, dict):
+            continue
         for name, fixture in data.items():
+            if not isinstance(fixture, dict):
+                continue
             cases += 1
             if is_invalid_file:
                 invalid_cases += 1
@@ -84,4 +88,3 @@ def validate_blockchain_inventory(root: Path, limit: int | None = None) -> tuple
         ),
         errors,
     )
-

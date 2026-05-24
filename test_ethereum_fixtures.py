@@ -7,6 +7,7 @@ from Crypto.Hash import keccak
 from ecdsa import SECP256k1, SigningKey
 
 from eth_tests.basic_adapter import validate_crypto_tests, validate_hex_prefix_tests
+from eth_tests.blockchain_adapter import validate_blockchain_inventory
 from eth_tests.fixtures import (
     find_ethereum_tests_root,
     iter_fixture_inventory,
@@ -129,6 +130,20 @@ def test_general_state_fixtures_inventory(ctx: SethTestContext):
     assert_equal(errors[:5], [], "eth_statefixtures_inventory_validate")
 
 
+def test_blockchain_fixtures_inventory(ctx: SethTestContext):
+    """BlockchainTests fixtures are indexed and their block RLP is parseable."""
+    root = _fixture_root_or_skip("eth_blockchain_fixtures_inventory")
+    if root is None:
+        return
+    limit = int(os.environ.get("ETHEREUM_BLOCKCHAIN_FIXTURE_LIMIT", "0") or "0") or None
+    summary, errors = validate_blockchain_inventory(root, limit=limit)
+    assert_true(summary.files > 0, "eth_blockfixtures_files_present", str(summary))
+    assert_true(summary.valid_cases > 0, "eth_blockfixtures_valid_present", str(summary))
+    assert_true(summary.invalid_cases > 0, "eth_blockfixtures_invalid_present", str(summary))
+    assert_true(summary.rlp_checked > 0, "eth_blockfixtures_rlp_checked", str(summary))
+    assert_equal(errors[:5], [], "eth_blockfixtures_inventory_validate")
+
+
 def run_all(ctx: SethTestContext):
     print_section("Ethereum/tests Fixture Migration")
     run_test(test_fixture_inventory, ctx)
@@ -139,3 +154,4 @@ def run_all(ctx: SethTestContext):
     run_test(test_rlp_fixtures_offline, ctx)
     run_test(test_transaction_fixtures_offline, ctx)
     run_test(test_general_state_fixtures_inventory, ctx)
+    run_test(test_blockchain_fixtures_inventory, ctx)

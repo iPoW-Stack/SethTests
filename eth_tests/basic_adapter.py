@@ -8,7 +8,7 @@ from .fixtures import load_json
 
 
 def encode_hex_prefix(seq: list[int], term: bool) -> str:
-    nibbles = list(seq) + ([16] if term else [])
+    nibbles = list(seq)
     odd = len(nibbles) % 2
     flags = 2 * int(term) + odd
     if odd:
@@ -47,4 +47,3 @@ def validate_crypto_tests(root: Path) -> tuple[int, list[str]]:
             errors.append(f"{name}: expected {item['payload']}, got {got}")
         checked += 1
     return checked, errors
-

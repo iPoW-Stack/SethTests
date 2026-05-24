@@ -33,6 +33,10 @@ def validate_rlp_tests(root: Path) -> tuple[int, int, list[str]]:
             continue
         for name, item in load_json(path).items():
             expected = _strip_0x(item["out"]).lower()
+            if item["in"] == "VALID":
+                decode_strict(bytes.fromhex(expected))
+                valid_checked += 1
+                continue
             got = encode(_fixture_input(item["in"])).hex()
             if got != expected:
                 errors.append(f"{rel}::{name}: expected {expected}, got {got}")
@@ -50,4 +54,3 @@ def validate_rlp_tests(root: Path) -> tuple[int, int, list[str]]:
                 errors.append(f"RLPTests/invalidRLPTest.json::{name}: decoded invalid RLP")
 
     return valid_checked, invalid_checked, errors
-

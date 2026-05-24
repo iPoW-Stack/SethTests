@@ -4,9 +4,8 @@ import collections
 from dataclasses import dataclass
 from pathlib import Path
 
-from Crypto.Hash import keccak
-
 from .fixtures import iter_tgz_json
+from .rlp import decode_strict
 
 
 CATEGORY_MODULE_MAP = {
@@ -82,14 +81,16 @@ def validate_general_state_inventory(root: Path, limit: int | None = None) -> tu
                 for entry in entries:
                     post_entries += 1
                     txbytes = entry.get("txbytes")
-                    exp_hash = entry.get("hash")
-                    if txbytes and exp_hash:
+                    if txbytes:
                         raw = bytes.fromhex(_strip_0x(txbytes))
-                        got = "0x" + keccak.new(digest_bits=256).update(raw).hexdigest()
-                        if got.lower() != exp_hash.lower():
-                            errors.append(f"{path}::{name}: txbytes hash expected {exp_hash}, got {got}")
-                        else:
+                        try:
+                            if raw and raw[0] in (1, 2, 3, 4):
+                                decode_strict(raw[1:])
+                            else:
+                                decode_strict(raw)
                             txbytes_checked += 1
+                        except Exception as exc:
+                            errors.append(f"{path}::{name}: invalid txbytes RLP: {exc}")
 
     mapped_categories = sum(1 for cat in categories if cat in CATEGORY_MODULE_MAP)
     return (
@@ -103,4 +104,3 @@ def validate_general_state_inventory(root: Path, limit: int | None = None) -> tu
         ),
         errors,
     )
-

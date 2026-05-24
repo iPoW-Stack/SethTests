@@ -130,6 +130,12 @@ python seth_tests/seth_test_runner.py --module transactions
 python seth_tests/seth_test_runner.py --module prefund
 python seth_tests/seth_test_runner.py --module oqs
 
+# Run adapters for official ethereum/tests fixtures
+git clone --depth 1 --filter=blob:none --sparse https://github.com/ethereum/tests.git /tmp/ethereum-tests
+cd /tmp/ethereum-tests && git sparse-checkout set BasicTests TransactionTests BlockchainTests JSONSchema
+cd /root/SethTests
+ETHEREUM_TESTS_ROOT=/tmp/ethereum-tests python seth_test_runner.py --module ethfixtures
+
 # Skip OQS tests (if no OQS keys available)
 python seth_tests/seth_test_runner.py --skip-oqs
 

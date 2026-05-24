@@ -9,6 +9,7 @@ import test_core_evm, test_contracts, test_transactions, test_transaction_integr
 import test_blockchain, test_prefund, test_oqs
 import test_basic, test_genesis, test_vm_opcodes, test_onchain
 import test_other
+import test_ethereum_fixtures
 
 MODULE_MAP = {
     "core": test_core_evm,
@@ -23,6 +24,7 @@ MODULE_MAP = {
     "vm": test_vm_opcodes,
     "onchain": test_onchain,
     "other": test_other,
+    "ethfixtures": test_ethereum_fixtures,
 }
 
 def parse_args():
@@ -70,6 +72,7 @@ def list_tests():
         ("Phase 5B: VM Opcodes", "vm", test_vm_opcodes),
         ("Phase 5C: On-chain State Tests", "onchain", test_onchain),
         ("Phase 6:  Other Tests (AMM, Cross-Shard, EIP-1559)", "other", test_other),
+        ("Ethereum/tests Fixture Migration", "ethfixtures", test_ethereum_fixtures),
     ]
     print()
     print("Available Test Modules:")

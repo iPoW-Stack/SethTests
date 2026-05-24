@@ -8,6 +8,13 @@ def decode(data: bytes):
     return value
 
 
+def decode_strict(data: bytes):
+    value, pos = _decode_strict_at(data, 0)
+    if pos != len(data):
+        raise ValueError("trailing RLP bytes")
+    return value
+
+
 def _decode_at(data: bytes, pos: int):
     if pos >= len(data):
         raise ValueError("unexpected end of RLP")
@@ -36,11 +43,73 @@ def _decode_at(data: bytes, pos: int):
     return _decode_list_payload(data, payload, payload + size)
 
 
+def _decode_strict_at(data: bytes, pos: int):
+    if pos >= len(data):
+        raise ValueError("unexpected end of RLP")
+    b = data[pos]
+    if b < 0x80:
+        return bytes([b]), pos + 1
+    if b <= 0xb7:
+        size = b - 0x80
+        start = pos + 1
+        end = start + size
+        if end > len(data):
+            raise ValueError("short RLP string payload")
+        if size == 1 and data[start] < 0x80:
+            raise ValueError("non-canonical single byte string")
+        return data[start:end], end
+    if b <= 0xbf:
+        len_size = b - 0xb7
+        start = pos + 1
+        if start + len_size > len(data):
+            raise ValueError("short RLP string length")
+        if data[start] == 0:
+            raise ValueError("leading zero in RLP string length")
+        size = int.from_bytes(data[start:start + len_size], "big")
+        if size <= 55:
+            raise ValueError("non-canonical long string")
+        payload = start + len_size
+        if payload + size > len(data):
+            raise ValueError("short RLP long string payload")
+        return data[payload:payload + size], payload + size
+    if b <= 0xf7:
+        size = b - 0xc0
+        start = pos + 1
+        end = start + size
+        if end > len(data):
+            raise ValueError("short RLP list payload")
+        return _decode_strict_list_payload(data, start, end)
+    len_size = b - 0xf7
+    start = pos + 1
+    if start + len_size > len(data):
+        raise ValueError("short RLP list length")
+    if data[start] == 0:
+        raise ValueError("leading zero in RLP list length")
+    size = int.from_bytes(data[start:start + len_size], "big")
+    if size <= 55:
+        raise ValueError("non-canonical long list")
+    payload = start + len_size
+    if payload + size > len(data):
+        raise ValueError("short RLP long list payload")
+    return _decode_strict_list_payload(data, payload, payload + size)
+
+
 def _decode_list_payload(data: bytes, start: int, end: int):
     out = []
     pos = start
     while pos < end:
         item, pos = _decode_at(data, pos)
+        out.append(item)
+    if pos != end:
+        raise ValueError("RLP list length mismatch")
+    return out, pos
+
+
+def _decode_strict_list_payload(data: bytes, start: int, end: int):
+    out = []
+    pos = start
+    while pos < end:
+        item, pos = _decode_strict_at(data, pos)
         out.append(item)
     if pos != end:
         raise ValueError("RLP list length mismatch")
@@ -72,4 +141,3 @@ def _prefix(payload: bytes, short_offset: int) -> bytes:
 
 def bytes_to_int(value: bytes) -> int:
     return int.from_bytes(value, "big") if value else 0
-

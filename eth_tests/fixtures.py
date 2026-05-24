@@ -68,7 +68,7 @@ def iter_tgz_members(root: Path, archive_name: str, prefix: str) -> Iterator[Fix
 
 
 def iter_fixture_inventory(root: Path) -> Iterator[FixtureRef]:
-    for suite in ("BasicTests", "TransactionTests", "BlockchainTests"):
+    for suite in ("BasicTests", "TransactionTests", "RLPTests", "BlockchainTests"):
         for path in iter_json_files(root, suite):
             yield FixtureRef(suite, path.stem, str(path.relative_to(root)), "directory")
 
@@ -87,4 +87,3 @@ def iter_fixture_inventory(root: Path) -> Iterator[FixtureRef]:
         "fixtures_blockchain_tests.tgz",
         "BlockchainTests/",
     )
-
